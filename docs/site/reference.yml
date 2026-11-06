@@ -1,0 +1,343 @@
+# The command reference for stata.framework.pub, written by hand.
+# scripts/build_docs.py turns it into reference.json (docs-reference.v1)
+# with the package version from ado/fw_core.mata. Keep it in step with the
+# .sthlp help files.
+
+categories:
+  - id: workflow
+    title: Workflow
+    description: Setup checks and project discovery
+    position: 1
+    common: [fw_project, fw_setup]
+  - id: data
+    title: Data
+    description: Named datasets and integrity checks
+    position: 2
+    common: [fw_use, fw_save]
+  - id: publishing
+    title: Publishing
+    description: Files and estimation results
+    position: 3
+    common: [fw_publish]
+  - id: cloud
+    title: Cloud
+    description: Framework Cloud login and logout
+    position: 4
+    common: [fw_login]
+
+entries:
+  - id: fw_setup
+    name: fw_setup
+    kind: command
+    category: workflow
+    summary: Check Stata, system tools, backends, and the Cloud connection
+    usage: fw_setup [, nopython nonetwork url(string)]
+    description: |
+      `fw_setup` checks everything Framework for Stata uses and prints the next step for anything missing:
+
+      - the Stata version and where the package is installed
+      - the project at or above the current folder
+      - curl, the SHA-256 tool, and the system keyring
+      - the Framework Cloud server and whether this computer is connected
+      - `fw`, the command-line tool, and its version
+      - Stata's Python and whether framework-py is installed in it
+      - the backend setting
+
+      When framework-py is missing from Stata's Python, `fw_setup` prints the `pip` command for that exact Python.
+    parameters:
+      - name: nopython
+        description: Skips the Python check. Checking Python starts Stata's Python for the session, and Stata cannot change Python after that.
+      - name: nonetwork
+        description: Skips the request that confirms the Cloud login.
+      - name: url(string)
+        description: Checks a Framework Cloud server other than the default.
+    returns: |
+      `r(steps)`: the number of next steps printed.
+    examples:
+      - code: fw_setup
+      - title: Without starting Python
+        code: fw_setup, nopython nonetwork
+    see_also: [fw_set, fw_login, "guide:installation"]
+
+  - id: fw_project
+    name: fw_project
+    kind: command
+    category: workflow
+    summary: Find the project and set path globals
+    usage: fw_project [, root(folder) quietly]
+    description: |
+      `fw_project` walks up from the current folder, at most 10 levels, to the first folder with `.framework/`, `settings.yml`, `config.yml`, or `settings.do`. It reads the project settings and sets a global for each project folder.
+
+      | Global | Value |
+      |--------|-------|
+      | `$fw_root` | The project folder |
+      | `$fw_`*key* | Each folder in `directories`, such as `$fw_inputs_raw` |
+      | `$fw_data` | The `inputs_final` folder, when the settings have one |
+      | `$fw_outputs` | The `outputs` folder, when it exists |
+      | `$fw_project_name` | The project name |
+    details: |
+      Paths are absolute and use forward slashes on every system. Globals from a previous project are cleared.
+
+      Settings come from `settings.yml`, with split files such as `settings/data.yml` and environment sections. The active environment is `FW_CONFIG_ACTIVE`, then `R_CONFIG_ACTIVE`, then `R_CONFIG_NAME`, then `default`. Projects that `fw` created for Stata keep their folders in `settings.do`; `fw_project` reads those too and leaves the globals of `settings.do`, such as `$inputs_raw`, untouched.
+
+      Other commands run `fw_project` themselves when no project is loaded. Run it again after you change to another project.
+    parameters:
+      - name: root(folder)
+        description: Starts the search in *folder* rather than the current folder.
+      - name: quietly
+        description: Skips the summary.
+    returns: |
+      - `r(root)`: the project folder
+      - `r(name)`: the project name
+      - `r(folders)`: the folder keys
+    examples:
+      - code: |
+          fw_project
+          use "$fw_inputs_raw/survey.dta", clear
+        runnable: false
+    see_also: [fw_use, "guide:projects"]
+
+  - id: fw_use
+    name: fw_use
+    kind: command
+    category: data
+    summary: Load a named dataset and check its integrity
+    usage: fw_use name [, clear check(strict|warn|off|accept) options(string)]
+    description: |
+      `fw_use` loads a dataset by name. A *name* is resolved in this order:
+
+      1. A file path, such as `inputs/raw/survey.csv`. A relative path is tried from the current folder, then from the project root.
+      2. An entry in the project's data catalog, such as `inputs.raw.survey`.
+      3. Dot notation: the longest leading part that names a project folder picks the folder, and the rest names the file. `inputs.final.analysis` is `$fw_inputs_final/analysis.dta`.
+
+      The extension picks the reader: `.dta` uses `use`, `.csv` and `.tsv` use `import delimited`, and `.xlsx` and `.xls` use `import excel, firstrow`.
+    details: |
+      Before loading, `fw_use` computes the file's SHA-256 checksum and compares it with the record from the last `fw_save` or `fw_use`. After loading, it compares Stata's `datasignature`. A dataset that changed stops with error 459 when it is locked, and loads with a warning when it is unlocked. To accept a change to a locked dataset, load it with `check(accept)`. It records the new checksum and data signature and keeps the lock. The file is not rewritten.
+
+      The first read of a name records it. Reads of unlocked datasets update the record, as in R and Python. Records live in `.framework/stata-integrity.tsv`. Plain file paths are not recorded.
+
+      SHA-256 comes from `sha256sum` or `shasum` on Linux and macOS and from PowerShell on Windows. Without one, only `datasignature` is checked. It covers values and variable names. It does not cover labels or notes.
+    parameters:
+      - name: name
+        required: true
+        description: A file path, a catalog name, or a dot name.
+      - name: clear
+        description: Replaces the data in memory.
+      - name: check(strict|warn|off|accept)
+        default: strict
+        description: Sets the integrity check. `warn` loads a changed locked dataset with a warning and keeps the old record. `off` skips the check and the record. `accept` loads the dataset and records it as it is now, with the new SHA-256, data signature, and time. The lock stays as it was. The file is not rewritten. With the integrity ledger on, it sends the new checksum, as `fw_save` does. It needs a catalog or dot name.
+      - name: options(string)
+        description: Options passed to `use`, `import delimited`, or `import excel`.
+    returns: |
+      - `r(name)`: the dataset name
+      - `r(path)`: the file
+      - `r(type)`: `dta`, `csv`, `tsv`, `xlsx`, or `xls`
+      - `r(sha256)`: the file checksum, when available
+      - `r(datasignature)`: the data signature
+      - `r(locked)`: 1 when the dataset is locked
+      - `r(accepted)`: 1 when `check(accept)` recorded the dataset again
+    examples:
+      - code: fw_use inputs.raw.survey, clear
+        runnable: false
+      - title: A CSV file by path
+        code: fw_use "inputs/raw/visits.csv", clear options(varnames(1))
+        runnable: false
+      - title: Accept a change to a locked dataset
+        code: fw_use inputs.raw.survey, clear check(accept)
+        runnable: false
+    see_also: [fw_save, "guide:data"]
+
+  - id: fw_save
+    name: fw_save
+    kind: command
+    category: data
+    summary: Save a named dataset and record its integrity
+    usage: fw_save name [, replace unlocked options(string)]
+    description: |
+      `fw_save` saves the data in memory under a name, then records the file's SHA-256 checksum and Stata's `datasignature`. Names resolve as in `fw_use`. `fw_save inputs.final.analysis` writes `$fw_inputs_final/analysis.dta` and creates the folder when needed. A relative path uses the current folder when the file or its folder is there, else the project root.
+    details: |
+      When the project's integrity ledger is on, `fw_save` also sends the checksum, the file size, and this computer's name to Framework Cloud. The data itself is never uploaded. Turn the ledger on with `options: cloud_ledger: live` in the project settings, and off for a session with the environment variable `FW_LEDGER=off`.
+
+      `fw_save` does not edit the YAML data catalog. R and Python find the dataset by its path.
+    parameters:
+      - name: name
+        required: true
+        description: A file path, a catalog name, or a dot name.
+      - name: replace
+        description: Overwrites an existing file.
+      - name: unlocked
+        description: Lets the dataset change. `fw_use` then warns rather than stops when the file differs from its record.
+      - name: options(string)
+        description: Options passed to `save`, `export delimited`, or `export excel`.
+    returns: The same as `fw_use`.
+    examples:
+      - code: |
+          sysuse auto, clear
+          fw_save inputs.raw.cars, replace
+        runnable: false
+      - title: A dataset that may change
+        code: fw_save inputs.final.analysis, replace unlocked
+        runnable: false
+    see_also: [fw_use, "guide:data"]
+
+  - id: fw_publish
+    name: fw_publish
+    kind: command
+    category: publishing
+    summary: Publish a figure, table, document, or estimation results
+    usage: |
+      fw_publish filename [, options]
+      fw_publish, estimates [options level(#) saving(filename [, replace])]
+    description: |
+      `fw_publish` publishes one file: a figure, a table, a rendered HTML document with its *name*`_files` folder, or any other file. Each publish adds a version and keeps the earlier ones.
+
+      `fw_publish, estimates` publishes the current estimation results as a model: a coefficient table with standard errors, test statistics, p-values, and confidence intervals, plus fit statistics. Framework Cloud and the offline reader show it like a model published from R or Python.
+    sections:
+      - title: Destinations
+        content: |
+          Without `to()`, `fw_publish` uses `publish.default` in the project settings, then Framework Cloud. Named destinations live in the settings under `publish.destinations`. A folder destination needs a `path`, so `to(folder)` alone stops with an error.
+
+          Stata publishes to folders and to Framework Cloud itself. GitHub Pages and S3 need `fw` or framework-py; see `fw_set`. Framework Cloud uploads use the project token in the project's `.env` file.
+      - title: Estimation commands
+        content: |
+          `regress`, `logit`, `logistic`, `probit`, `poisson`, `nbreg`, `glm`, `mixed`, `stcox`, and `ivregress` map to Framework's model types with the right family, link, and ratio label. Other commands with `e(b)` and `e(V)` publish a generic coefficient table.
+
+          Estimates stay on the model scale. `_cons` becomes `(Intercept)`. Base and omitted factor levels are left out. `mixed` adds a random-effects table for independent, identity, exchangeable, and unstructured covariance. `nbreg` reports alpha or delta as a fit statistic. Other free parameters, such as tobit's `var(e.y)`, go in an ancillary table, without a test where Stata shows none.
+      - title: Private paths
+        content: |
+          A file whose full path contains "private", in any case, needs confirmation. Interactive Stata asks. Batch mode stops with error 198 until you add the `includeprivate` option. R, Python, and `fw` follow the same rule. The `private` option sets visibility, not this confirmation.
+    parameters:
+      - name: filename
+        description: The file to publish. Leave it out with `estimates`.
+      - name: estimates
+        description: Publishes the current estimation results as a model.
+      - name: slug(string)
+        description: The artifact's name in its link. The default comes from the file name.
+      - name: title(string)
+        description: The title readers see.
+      - name: description(string)
+        description: A short description.
+      - name: to(destination)
+        description: "`cloud`, `github`, `s3`, or a destination named in the project settings. A folder destination must be named, with a path."
+      - name: visibility(string)
+        description: "`public`, `unlisted`, or `private`. On Framework Cloud, a new artifact without it is unlisted, and a later publish without it keeps the current visibility."
+      - name: private
+        description: Short for `visibility(private)`.
+      - name: includeprivate
+        description: Confirms files with "private" in their path.
+      - name: kind(string)
+        description: Overrides the detected kind, such as `image` or `html`.
+      - name: level(#)
+        default: c(level)
+        description: The confidence level, with `estimates`. The default is 95 unless changed with `set level`. The estimation command's own `level()` is not read.
+      - name: saving(filename [, replace])
+        description: Keeps a copy of the model document, with `estimates`.
+    returns: |
+      - `r(url)`: the published link, when the destination has one
+      - `r(location)`: the published folder, for folder destinations
+      - `r(version)`: the version number
+      - `r(version_url)`: the link to this version
+      - `r(destination)`: the destination name
+      - `r(driver)`: `cloud`, `folder`, `github`, or `s3`
+      - `r(backend)`: `core`, `cli`, or `python`
+      - `r(slug)`: the artifact name
+      - `r(file)`: the file that was published; with `estimates`, the `saving()` copy, else empty
+
+      Every backend sets these results. A result is empty when the destination does not report it.
+    examples:
+      - title: A figure
+        code: |
+          graph export "$fw_outputs_figures/price.png", replace
+          fw_publish "$fw_outputs_figures/price.png", title("Price and mileage")
+        runnable: false
+      - title: A model to a named destination
+        code: |
+          sysuse auto, clear
+          regress price mpg weight
+          fw_publish, estimates slug(price-model) to(lab)
+        runnable: false
+    see_also: [fw_set, "guide:publishing", "guide:estimates"]
+
+  - id: fw_login
+    name: fw_login
+    kind: command
+    category: cloud
+    summary: Connect this computer to Framework Cloud
+    usage: fw_login [, url(string) nobrowser]
+    description: |
+      `fw_login` connects this computer to Framework Cloud through the browser:
+
+      1. Stata shows a short code and opens the approval page.
+      2. You sign in, or create a free account, and approve the computer.
+      3. Stata stores the new token in the system keyring.
+
+      R, Python, and `fw` use the same keyring entry, so one login serves them all. Without a keyring, the token goes in a private file in the Framework configuration folder. The token never appears in Stata's Results window, macros, or logs.
+    details: |
+      Publishing a project to Cloud uses the project token in its `.env` file. `fw_login` connects only the computer. Publishing still needs a project token.
+    parameters:
+      - name: url(string)
+        description: Connects to a Framework Cloud server other than https://framework.pub, such as a self-hosted one.
+      - name: nobrowser
+        description: Prints the link without opening the browser. Batch mode never opens a browser.
+    returns: |
+      - `r(account)`: the connected account's name
+      - `r(stored)`: where the token went, `keyring` or `file`
+    examples:
+      - code: fw_login
+        runnable: false
+      - title: A self-hosted server
+        code: fw_login, url("https://cloud.example.org")
+        runnable: false
+    see_also: [fw_logout, fw_setup, "guide:cloud"]
+
+  - id: fw_logout
+    name: fw_logout
+    kind: command
+    category: cloud
+    summary: Remove this computer's Framework Cloud token
+    usage: fw_logout [, url(string)]
+    description: |
+      `fw_logout` removes the token for a Framework Cloud server from the system keyring and from the token files Python and `fw` use. It first revokes the token on the server. When the server cannot be reached, it still removes the token here and says to revoke it on the server's tokens page. A token in `FW_CLOUD_TOKEN` is neither removed nor revoked. R keeps a separate token file; `fw_logout` names it when it exists.
+    parameters:
+      - name: url(string)
+        description: The server to log out of. The default is the remembered server.
+    examples:
+      - code: fw_logout
+        runnable: false
+    see_also: [fw_login, "guide:cloud"]
+
+  - id: fw_set
+    name: fw_set
+    kind: command
+    category: workflow
+    summary: Set the backend and the location of fw
+    usage: |
+      fw_set
+      fw_set backend {auto|core|cli|python}
+      fw_set fw_path {path|clear}
+    description: |
+      `fw_set` with no arguments shows the options. Options are stored in `stata.conf` in the Framework configuration folder and apply to every project.
+
+      | Backend | Behavior |
+      |---------|----------|
+      | `auto` | Stata handles folders and Framework Cloud. GitHub and S3 use `fw` when it is installed, then framework-py. The default. |
+      | `core` | Stata only. GitHub and S3 publishing stop with an error. |
+      | `cli` | Every publish goes through `fw`. |
+      | `python` | Every publish goes through framework-py in Stata's Python. Stata 16 or newer. |
+    details: |
+      The global `FW_BACKEND` overrides the stored backend for one session: `global FW_BACKEND cli`.
+
+      `fw_set fw_path` points to `fw` when Stata cannot find it. The Stata application on macOS starts with a short PATH, so this is common there.
+    parameters:
+      - name: backend
+        description: "`auto`, `core`, `cli`, or `python`."
+        default: auto
+        env: FW_BACKEND
+      - name: fw_path
+        description: The full path to `fw`, or `clear` to forget it.
+    examples:
+      - code: |
+          fw_set backend cli
+          fw_set fw_path "/opt/homebrew/bin/fw"
+        runnable: false
+    see_also: [fw_publish, fw_setup, "guide:backends"]

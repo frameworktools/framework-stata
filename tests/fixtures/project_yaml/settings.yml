@@ -1,0 +1,33 @@
+# Example project settings
+default:
+  project:
+    name: example-study
+  directories:
+    inputs_raw: inputs/raw
+    inputs_intermediate: inputs/intermediate
+    inputs_final: 'inputs/final'
+    outputs_figures: "outputs/figures"
+    notebooks: notebooks  # trailing comment
+  data: settings/data.yml
+  options:
+    cloud_ledger: off
+    tags: [alpha, 'beta, gamma']
+    empty: {}
+  publish:
+    default: lab
+    destinations:
+      lab:
+        driver: folder
+        path: published
+        visibility: private
+  note: |
+    line one
+    line two
+  list_of_maps:
+    - name: a
+      value: 1
+    - name: b
+      value: 2
+staging:
+  directories:
+    inputs_raw: inputs/raw-staging

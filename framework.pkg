@@ -1,0 +1,41 @@
+v 3
+d framework: Framework for Stata
+d Project paths, named datasets with integrity checks, publishing of figures,
+d tables, documents, and estimation results, and Framework Cloud login.
+d The same workflow as the R and Python packages. Core commands need no
+d Python; fw and framework-py add GitHub and S3 publishing.
+d
+d Requires: Stata 14 or newer. curl for Framework Cloud.
+d Distribution-Date: 20261105
+d Author: Framework contributors
+d Support: https://framework.pub
+f ado/_fw_backend.ado
+f ado/_fw_init.ado
+f ado/_fw_need_project.ado
+f ado/_fw_python.ado
+f ado/framework.sthlp
+f ado/fw_bridge.py
+f ado/fw_cloud.mata
+f ado/fw_cloud_ps1.ihlp
+f ado/fw_cloud_sh.ihlp
+f ado/fw_core.mata
+f ado/fw_data.mata
+f ado/fw_estimates.mata
+f ado/fw_login.ado
+f ado/fw_login.sthlp
+f ado/fw_logout.ado
+f ado/fw_logout.sthlp
+f ado/fw_project.ado
+f ado/fw_project.sthlp
+f ado/fw_publish.ado
+f ado/fw_publish.mata
+f ado/fw_publish.sthlp
+f ado/fw_reader_html.ihlp
+f ado/fw_save.ado
+f ado/fw_save.sthlp
+f ado/fw_set.ado
+f ado/fw_set.sthlp
+f ado/fw_setup.ado
+f ado/fw_setup.sthlp
+f ado/fw_use.ado
+f ado/fw_use.sthlp

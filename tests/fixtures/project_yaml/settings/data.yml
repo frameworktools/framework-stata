@@ -1,0 +1,7 @@
+data:
+  inputs:
+    raw:
+      survey:
+        path: inputs/raw/survey.csv
+        type: csv
+        locked: true

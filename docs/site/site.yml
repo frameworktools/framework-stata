@@ -1,0 +1,18 @@
+# The Framework for Stata docs site (stata.framework.pub). Format: the R
+# package's inst/schema/docs-site.md. Sections are the top-bar dropdowns and
+# the sidebar groups, in this order. scripts/build_docs.py builds
+# reference.json from reference.yml and packs docs-site.tar.gz.
+product: stata
+title: Framework for Stata
+tagline: Structured research projects in Stata
+repository: https://github.com/frameworktools/framework-stata
+# The GitHub address works once the repository is public; installation.md says so.
+install: net install framework, from("https://raw.githubusercontent.com/frameworktools/framework-stata/main") replace
+sections:
+  - id: getting_started
+    title: Getting started
+  - id: features
+    title: Features
+  - id: reference
+    title: Reference
+    reference: true

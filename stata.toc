@@ -1,0 +1,5 @@
+v 3
+d Framework for Stata: project paths, named datasets with integrity checks,
+d publishing, and Framework Cloud.
+d https://framework.pub
+p framework Framework for Stata
