@@ -102,7 +102,7 @@ class Handler(BaseHTTPRequestHandler):
             })
         if self.path == "/api/v1/ledger":
             return self._send(201, {"sequence": 7})
-        if self.path.startswith("/api/v2/projects/") and self.path.endswith("/artifacts/external"):
+        if self.path.startswith("/api/v1/projects/") and self.path.endswith("/artifacts/external"):
             return self._send(201, {"ok": True})
         self._send(404, {"message": "Not found"})
 

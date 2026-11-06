@@ -156,7 +156,7 @@ capture noisily {
     mata: up = select(R, strpos(R, "/artifacts/external") :> 0)
     mata: assert(rows(up) == 1)
     mata: U = fw_json_parse(up[1])
-    mata: assert(fw_get(U, "path") == "/api/v2/projects/example-study/artifacts/external")
+    mata: assert(fw_get(U, "path") == "/api/v1/projects/example-study/artifacts/external")
     mata: assert(fw_get(U, "json.driver") == "folder")
     mata: assert(fw_get(U, "json.visibility") == "private")
     mata: assert(strlen(fw_get(U, "json.sha256")) == 64)

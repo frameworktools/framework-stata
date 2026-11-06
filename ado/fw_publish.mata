@@ -324,7 +324,7 @@ void fw_track_external(string scalar root, string scalar bundle, string scalar m
         fw_json_str("sha256") + ":" + fw_json_str(sha) + "," +
         fw_json_str("published_at") + ":" + fw_json_str(fw_get(A, "created_at")) + "," +
         fw_json_str("visibility") + ":" + fw_json_str(visibility != "" ? visibility : "public") + "}"
-    status = fw_http("track", "POST", url + "/api/v2/projects/" + fw_url_quote(pslug) + "/artifacts/external",
+    status = fw_http("track", "POST", url + "/api/v1/projects/" + fw_url_quote(pslug) + "/artifacts/external",
         "project", root, d, body, J(0, 3, ""), 30)
     if (status < 200 | status >= 300) {
         printf("{txt}Published, but Cloud tracking failed: %s\n", fw_http_reason(status, d, "track", url))
