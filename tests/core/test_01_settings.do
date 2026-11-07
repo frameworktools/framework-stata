@@ -212,3 +212,22 @@ capture noisily {
     t_log_lacks "intermediateinputs"
 }
 t_end `=_rc'
+
+t_begin settings: project_name names the project, as in R and Python
+capture noisily {
+    t_tmpdir
+    local s `"`r(dir)'"'
+    t_write `"`s'/settings.yml"' "default:" "  project_name: study-stata" "  project:" "    name: older-key" "  directories:" "    inputs_raw: inputs/raw"
+    fw_project, root(`"`s'"') quietly
+    t_eq `"`r(name)'"' "study-stata"
+    t_eq `"$fw_project_name"' "study-stata"
+    * project.name still works, and the folder name is the last resort.
+    t_write `"`s'/settings.yml"' "default:" "  project:" "    name: older-key"
+    fw_project, root(`"`s'"') quietly
+    t_eq `"`r(name)'"' "older-key"
+    t_write `"`s'/settings.yml"' "default:" "  directories:" "    inputs_raw: inputs/raw"
+    fw_project, root(`"`s'"') quietly
+    mata: st_local("base", fw_basename(st_local("s")))
+    t_eq `"`r(name)'"' `"`base'"'
+}
+t_end `=_rc'

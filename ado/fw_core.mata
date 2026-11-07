@@ -1030,8 +1030,7 @@ void fw_project_load(string scalar start, real scalar quiet)
     }
     if (!anyof(names, "outputs") & direxists(root + "/outputs")) st_global("fw_outputs", root + "/outputs")
     st_global("fw_dir_list", invtokens(names))
-    st_global("fw_project_name", fw_setting(S, "project.name") != "" ? fw_setting(S, "project.name") :
-        (fw_setting(S, "name") != "" ? fw_setting(S, "name") : fw_basename(root)))
+    st_global("fw_project_name", fw_project_name(S))
     if (!quiet) {
         printf("{txt}Project: {res}%s\n", st_global("fw_project_name"))
         printf("{txt}Root:    {res}%s\n", root)
@@ -1049,6 +1048,18 @@ void fw_project_load(string scalar start, real scalar quiet)
             }
         }
     }
+}
+
+// The project name: project_name, the key R, Python, and fw write, then
+// project.name, then name, then the folder name.
+string scalar fw_project_name(transmorphic S)
+{
+    keys = ("project_name", "project.name", "name")
+    for (i = 1; i <= cols(keys); i++) {
+        v = fw_setting(S, keys[i])
+        if (v != "") return(v)
+    }
+    return(fw_basename(asarray(S, "__root")))
 }
 
 transmorphic scalar fw_S()

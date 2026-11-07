@@ -26,7 +26,8 @@ project folder:
 {p2col:{cmd:$fw_data}}the {bf:data} folder, else {bf:inputs_final}, else
 {bf:inputs_public_final}, when the settings define one, even before it exists{p_end}
 {p2col:{cmd:$fw_outputs}}{bf:outputs}, when it exists{p_end}
-{p2col:{cmd:$fw_project_name}}the project name{p_end}
+{p2col:{cmd:$fw_project_name}}the project name: {bf:project_name}, the key R,
+Python, and {bf:fw} write, else {bf:project.name}, else the folder name{p_end}
 {p2colreset}{...}
 
 {pstd}

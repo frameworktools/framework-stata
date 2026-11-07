@@ -38,7 +38,7 @@ Other commands run `fw_project` themselves when no project is loaded. Run it aga
 | `$fw_inputs_raw` | `directories: inputs_raw`, and so on for every key |
 | `$fw_data` | The `data` folder, else `inputs_final`, else `inputs_public_final`, when the settings have one, even before it exists |
 | `$fw_outputs` | The `outputs` folder, when it exists |
-| `$fw_project_name` | `project.name`, else the folder name |
+| `$fw_project_name` | `project_name`, the key R, Python, and `fw` write, else `project.name`, else the folder name |
 
 Paths are absolute and use forward slashes on every system. Globals from a previous project are cleared. A key whose global name would pass Stata's 32-character limit is skipped, and the summary says so.
 
@@ -54,8 +54,7 @@ Stata reads the same `settings.yml` as R, Python, and `fw`.
 
 ```yaml
 default:
-  project:
-    name: example-study
+  project_name: example-study
   directories:
     inputs_raw: inputs/raw
     inputs_final: inputs/final
