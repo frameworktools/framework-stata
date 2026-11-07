@@ -131,6 +131,20 @@ Stata reads YAML: `fw_project` reads `settings.yml` first and adds the folders o
 
 When both files set the same folder to different paths, `settings.yml` wins. `fw_project` prints a note for each such folder and lists them in `r(conflicts)`. Keep the two in step, or set folders in one file only.
 
+## Precision
+
+Stata stores new variables as float unless told otherwise. `generate`, and `collapse (mean)` of a variable that is not double, keep about 7 significant digits. R and Python compute in double, so results can differ from theirs at about 1e-7. A port of an R project found a mean that matched R only to 1e-7 for this reason.
+
+To match R and Python, put `set type double` near the top of `master.do`:
+
+```stata
+version 14
+set type double
+do "settings.do"
+```
+
+It lasts for the Stata session. Framework does not change it for you. A variable that is already float stays float: `recast double` it first. `fw_use` reads decimals in CSV files as double.
+
 ## Stored results
 
 `fw_project` stores `r(root)`, `r(name)`, `r(folders)`, the list of folder keys, and `r(conflicts)`, the folders that `settings.yml` and `settings.do` set differently.

@@ -57,6 +57,19 @@ Other commands run {cmd:fw_project} themselves when no project is loaded.
 Run it again after you change to another project.
 
 
+{title:Precision}
+
+{pstd}
+Stata stores new variables as float unless told otherwise:
+{cmd:generate}, and {cmd:collapse (mean)} of a variable that is not double,
+keep about 7 significant digits. R and Python compute in double, so results can
+differ from theirs at about 1e-7. To match them, put {cmd:set type double} near
+the top of {bf:master.do}, after {cmd:version}. It lasts for the session;
+Framework does not change it for you. A variable that is already float stays
+float: {cmd:recast double} it first. {helpb fw_use} reads decimals in CSV files
+as double.
+
+
 {title:Options}
 
 {phang}

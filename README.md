@@ -82,6 +82,23 @@ the folders of `settings.do` it does not set; every command works from that
 merged view. When both set a folder differently, `settings.yml` wins and
 `fw_project` prints a note.
 
+### Precision
+
+Stata stores new variables as float unless told otherwise: `generate`, and
+`collapse (mean)` of a variable that is not double, keep about 7 significant
+digits. R and Python compute in double, so results can differ from theirs at
+about 1e-7. To match them, put `set type double` near the top of `master.do`:
+
+```stata
+version 14
+set type double
+do "settings.do"
+```
+
+It lasts for the Stata session. Framework does not change it for you. A
+variable that is already float stays float; `recast double` it first. `fw_use`
+reads decimals in CSV files as double.
+
 ## Named datasets and integrity
 
 ```stata
