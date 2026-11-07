@@ -102,7 +102,7 @@ entries:
     kind: command
     category: data
     summary: Load a named dataset and check its integrity
-    usage: fw_use name [, clear check(strict|warn|off|accept) options(string)]
+    usage: fw_use name [, clear check(strict|warn|off|accept) na(strings) asfloat options(string)]
     description: |
       `fw_use` loads a dataset by name. A *name* is resolved in this order:
 
@@ -111,6 +111,8 @@ entries:
       3. Dot notation: the longest leading part that names a project folder picks the folder, and the rest names the file. `inputs.final.analysis` is `$fw_inputs_final/analysis.dta`.
 
       The extension picks the reader: `.dta` uses `use`, `.csv` and `.tsv` use `import delimited`, and `.xlsx` and `.xls` use `import excel, firstrow`.
+
+      CSV and TSV files are read the way R's `data_read()` reads them: empty cells and `NA` are missing, a column of numbers and `NA` is numeric, and decimals are double. When import renames a column, such as one longer than 32 characters, `fw_use` lists the old and new names. A catalog entry's `stata_names` maps column names to Stata names.
     details: |
       Before loading, `fw_use` computes the file's SHA-256 checksum and compares it with the record from the last `fw_save` or `fw_use`. After loading, it compares Stata's `datasignature`. A dataset that changed stops with error 459 when it is locked, and loads with a warning when it is unlocked. To accept a change to a locked dataset, load it with `check(accept)`. It records the new checksum and data signature and keeps the lock. The file is not rewritten.
 
@@ -128,6 +130,11 @@ entries:
       - name: check(strict|warn|off|accept)
         default: strict
         description: Sets the integrity check. `warn` loads a changed locked dataset with a warning and keeps the old record. `off` skips the check and the record. `accept` loads the dataset and records it as it is now, with the new SHA-256, data signature, and time. The lock stays as it was. The file is not rewritten. With the integrity ledger on, it sends the new checksum, as `fw_save` does. It needs a catalog or dot name.
+      - name: na(strings)
+        default: '"NA"'
+        description: Text that CSV and TSV files use for missing values. Empty cells are always missing. A number in the list, such as `na("NA" "-99")`, also applies to numeric columns. `na("")` keeps the text `NA`.
+      - name: asfloat
+        description: Reads decimals in CSV and TSV files as float, Stata's own default. Without it, they are read as double.
       - name: options(string)
         description: Options passed to `use`, `import delimited`, or `import excel`.
     returns: |
@@ -138,6 +145,8 @@ entries:
       - `r(datasignature)`: the data signature
       - `r(locked)`: 1 when the dataset is locked
       - `r(accepted)`: 1 when `check(accept)` recorded the dataset again
+      - `r(renamed)`: the number of columns import renamed
+      - `r(na_columns)`: the number of columns where `na()` text became missing
     examples:
       - code: fw_use inputs.raw.survey, clear
         runnable: false

@@ -98,6 +98,12 @@ It records the new checksum and keeps the file as it is.
   computer's name to Framework Cloud, using the project token in `.env`. The
   data itself is never uploaded.
 
+`fw_use` reads CSV and TSV files as R's `data_read()` does: empty cells and
+`NA` are missing, and decimals are double. It lists any column that import
+renames, such as a name longer than 32 characters. A catalog entry's
+`stata_names` maps such columns to names you choose, and `fw_save` writes the
+original names back. See `help fw_use` for `na()` and `asfloat`.
+
 ## Publishing
 
 ```stata

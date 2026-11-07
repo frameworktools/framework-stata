@@ -9,7 +9,8 @@
 {title:Syntax}
 
 {p 8 16 2}
-{cmd:fw_use} {it:name} [{cmd:,} {opt clear} {opt check(strict|warn|off|accept)} {opt opt:ions(string)}]
+{cmd:fw_use} {it:name} [{cmd:,} {opt clear} {opt check(strict|warn|off|accept)} {opt na(strings)}
+{opt asfl:oat} {opt opt:ions(string)}]
 
 
 {title:Description}
@@ -28,6 +29,44 @@ is {cmd:$fw_inputs_final/analysis.dta}.{p_end}
 The extension picks the reader: {bf:.dta} uses {cmd:use}, {bf:.csv} and
 {bf:.tsv} use {cmd:import delimited}, and {bf:.xlsx} and {bf:.xls} use
 {cmd:import excel, firstrow}.
+
+
+{title:CSV files from R and Python}
+
+{pstd}
+{cmd:fw_use} reads CSV and TSV files the way R's {bf:data_read()} does:
+
+{phang2}o  Empty cells and the text {bf:NA} are missing values. A column that
+holds only numbers and {bf:NA} becomes numeric. {opt na()} sets other markers.{p_end}
+{phang2}o  Numeric columns are read with {cmd:asdouble}, so {bf:75.2} stays
+{bf:75.2} rather than the float {bf:75.19999695}.{p_end}
+{phang2}o  When import renames a column, because its name is longer than 32
+characters, is not a valid Stata name, or repeats, {cmd:fw_use} lists the old
+and new names. The variable keeps its column name as its label. Lowercasing
+alone, which {cmd:import delimited} does by default, is not listed; add
+{cmd:options(case(preserve))} to keep the file's case.{p_end}
+
+{pstd}
+{bf:TRUE} and {bf:FALSE} stay text. R reads them as logical values.
+
+{pstd}
+To choose the Stata names, add {bf:stata_names} to the catalog entry. It maps
+a column name in the file to a Stata variable name:
+
+        {bf:data:}
+          {bf:inputs:}
+            {bf:raw:}
+              {bf:visits:}
+                {bf:path: inputs/raw/visits.csv}
+                {bf:stata_names:}
+                  {bf:reason_ecmoref_refpicu_any_cardiac: reason_cardiac}
+
+{pstd}
+{cmd:fw_use inputs.raw.visits} then names the variable {cmd:reason_cardiac}.
+{helpb fw_save} to CSV or TSV under the same name writes the file's own column
+names back into the header, so R and Python read the names they expect. R and
+Python ignore {bf:stata_names}. It applies to CSV, TSV, and Excel files read by
+catalog name.
 
 
 {title:Integrity checks}
@@ -77,6 +116,16 @@ the integrity ledger on, it sends the new checksum, as {cmd:fw_save} does.
 {bf:accept} needs a catalog or dot name.
 
 {phang}
+{opt na(strings)} lists the text that CSV and TSV files use for missing
+values. The default is {cmd:na("NA")}, R's rule; empty cells are always
+missing. A number in the list, such as {cmd:na("NA" "-99")}, also applies to
+numeric columns. {cmd:na("")} keeps the text {bf:NA}.
+
+{phang}
+{opt asfloat} reads decimals in CSV and TSV files as float, Stata's own
+default. Without it, they are read as double.
+
+{phang}
 {opt options(string)} passes options to {cmd:use}, {cmd:import delimited}, or
 {cmd:import excel}.
 
@@ -98,4 +147,6 @@ the integrity ledger on, it sends the new checksum, as {cmd:fw_save} does.
 {p2col:{cmd:r(datasignature)}}the data signature{p_end}
 {p2col:{cmd:r(locked)}}1 when the dataset is locked{p_end}
 {p2col:{cmd:r(accepted)}}1 when {cmd:check(accept)} recorded the dataset again{p_end}
+{p2col:{cmd:r(renamed)}}the number of columns import renamed{p_end}
+{p2col:{cmd:r(na_columns)}}the number of columns where {opt na()} text became missing{p_end}
 {p2colreset}{...}

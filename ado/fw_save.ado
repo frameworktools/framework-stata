@@ -29,6 +29,10 @@ program define fw_save, rclass
     else {
         quietly export excel using `"`fw_path'"', firstrow(variables) `replace' `options'
     }
+    * A catalog entry with stata_names gets the file's own column names back.
+    if `fw_cataloged' & inlist("`fw_type'", "csv", "tsv") {
+        mata: fw_csv_restore_names(st_local("fw_record"), st_local("fw_path"), "`fw_type'" == "csv" ? "," : char(9))
+    }
 
     local fw_sha ""
     * A plain file path is recorded by its path from the project root, as R

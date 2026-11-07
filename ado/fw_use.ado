@@ -2,7 +2,8 @@
 *! Part of the framework package
 program define fw_use, rclass
     version 14
-    syntax anything(name=name id="dataset name") [, CLEAR CHECK(string) OPTions(string asis)]
+    syntax anything(name=name id="dataset name") [, CLEAR CHECK(string) OPTions(string asis) ///
+        ASFLoat NA(string asis)]
     _fw_need_project
     gettoken name : name
     if "`check'" == "" local check strict
@@ -25,18 +26,47 @@ program define fw_use, rclass
     }
     mata: fw_integrity_check_file(st_local("fw_root"), st_local("fw_record"), st_local("fw_path"), `fw_locked', st_local("check"))
 
+    * CSV and TSV: decimals as double and R's missing-value rule, unless the
+    * options() say otherwise.
+    local precision
+    if inlist("`fw_type'", "csv", "tsv") {
+        local lower = lower(`"`options'"')
+        local inopts = strpos(`"`lower'"', "asfl") | strpos(`"`lower'"', "asdouble")
+        if strpos(`"`lower'"', "asfl") local asfloat asfloat
+        if !`inopts' local precision = cond("`asfloat'" != "", "asfloat", "asdouble")
+    }
+    else if "`asfloat'" != "" | `"`na'"' != "" {
+        display as error "asfloat and na() apply to CSV and TSV files."
+        exit 198
+    }
+    mata: fw__na = fw_na_list(st_local("na"))
+
     if "`fw_type'" == "dta" {
         use `"`fw_path'"', clear `options'
     }
     else if "`fw_type'" == "csv" {
-        import delimited using `"`fw_path'"', clear `options'
+        import delimited using `"`fw_path'"', clear `precision' `options'
     }
     else if "`fw_type'" == "tsv" {
-        import delimited using `"`fw_path'"', delimiters(tab) clear `options'
+        import delimited using `"`fw_path'"', delimiters(tab) clear `precision' `options'
     }
     else {
         import excel using `"`fw_path'"', firstrow clear `options'
     }
+    local fw_renamed 0
+    local fw_na_cols 0
+    if "`fw_type'" != "dta" {
+        * Catalog aliases, then R's missing values, then a list of the
+        * columns Stata renamed on import.
+        if "`fw_record'" != "" & `fw_cataloged' {
+            mata: fw_stata_names(st_local("fw_record"))
+        }
+        if inlist("`fw_type'", "csv", "tsv") {
+            mata: fw_import_na(fw__na, "`asfloat'" != "")
+        }
+        mata: fw_import_renames(st_local("fw_path"))
+    }
+    capture mata: mata drop fw__na
 
     quietly datasignature
     local sig `"`r(datasignature)'"'
@@ -81,4 +111,6 @@ program define fw_use, rclass
     return local datasignature `"`sig'"'
     return scalar locked = `fw_locked'
     return scalar accepted = (`fw_accepted' > 0)
+    return scalar renamed = `fw_renamed'
+    return scalar na_columns = `fw_na_cols'
 end

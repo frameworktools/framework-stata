@@ -46,6 +46,31 @@ data:
 
 `options()` passes options to the Stata command.
 
+### CSV files from R and Python
+
+`fw_use` reads CSV and TSV files the way R's `data_read()` does, so a file in the shared catalog gives the same rows and values in every language:
+
+- **`NA` is missing.** Empty cells and the text `NA` are missing values, R's rule. A column that holds only numbers and `NA` becomes numeric. Give other markers with `na()`, such as `na("NA" "-99")`; a number in the list also applies to numeric columns. `na("")` keeps the text `NA`.
+- **Decimals are double.** Numeric columns are read with `asdouble`, so `75.2` stays `75.2` instead of the float `75.19999695`. Add `asfloat` for Stata's own default.
+- **Renamed columns are listed.** Stata variable names have at most 32 characters and no spaces. When import renames a column, `fw_use` lists each old and new name, and the variable keeps its column name as its label. Lowercasing alone, which `import delimited` does by default, is not listed. Add `options(case(preserve))` to keep the file's case.
+
+`TRUE` and `FALSE` stay text. R reads them as logical values.
+
+To choose the Stata names yourself, add `stata_names` to the catalog entry. It maps a column name in the file to a Stata variable name:
+
+```yaml
+data:
+  inputs:
+    raw:
+      visits:
+        path: inputs/raw/visits.csv
+        stata_names:
+          reason_ecmoref_refpicu_any_cardiac: reason_cardiac
+          log1p_bchecmoref_to_bchadmit_days: log1p_days
+```
+
+`fw_use inputs.raw.visits` names the variables `reason_cardiac` and `log1p_days`. `fw_save inputs.raw.visits` to CSV or TSV writes the file's own names back into the header, so R and Python still read `reason_ecmoref_refpicu_any_cardiac`. R and Python ignore `stata_names`.
+
 ## Integrity checks
 
 `fw_save` records two fingerprints of a named dataset:

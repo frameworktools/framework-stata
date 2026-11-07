@@ -377,6 +377,226 @@ void fw_integrity_accept(string scalar root, string scalar record, string scalar
     st_local("fw_accepted", (R[1] == "" ? "2" : "1"))
 }
 
+// ---------------------------------------------------------------------------
+// Importing CSV, TSV, and Excel files
+// ---------------------------------------------------------------------------
+
+// The words of an option such as na("NA" "-99" NULL), without their quotes.
+// Double quotes and compound double quotes group words.
+string rowvector fw_words(string scalar s)
+{
+    out = J(1, 0, "")
+    i = 1
+    n = strlen(s)
+    while (i <= n) {
+        c = substr(s, i, 1)
+        if (c == " " | c == char(9)) {
+            i++
+            continue
+        }
+        if (substr(s, i, 2) == char(96) + fw_dq()) {
+            k = strpos(substr(s, i + 2, .), fw_dq() + char(39))
+            if (k == 0) k = n - i - 1
+            out = out, substr(s, i + 2, k - 1)
+            i = i + k + 3
+            continue
+        }
+        if (c == fw_dq()) {
+            k = strpos(substr(s, i + 1, .), fw_dq())
+            if (k == 0) k = n - i + 1
+            out = out, substr(s, i + 1, k - 1)
+            i = i + k + 1
+            continue
+        }
+        k = i
+        while (k <= n & substr(s, k, 1) != " " & substr(s, k, 1) != char(9)) k++
+        out = out, substr(s, i, k - i)
+        i = k
+    }
+    return(out)
+}
+
+// The text values fw_use reads as missing in CSV and TSV files. The default
+// is R's rule: "NA" (empty cells are always missing). Empty words drop out,
+// so na("") keeps "NA" as text.
+string rowvector fw_na_list(string scalar s)
+{
+    if (strtrim(s) == "") return("NA")
+    w = fw_words(s)
+    out = J(1, 0, "")
+    for (i = 1; i <= cols(w); i++) if (strtrim(w[i]) != "") out = out, w[i]
+    return(out)
+}
+
+// After import: blank the NA text in string columns and turn a column that
+// is then all numbers into a numeric one, as R's readr does. destring makes
+// doubles, or floats with asfloat. Sets local fw_na_cols (columns changed).
+void fw_import_na(string rowvector na, real scalar asfloat)
+{
+    changed = 0
+    conv = J(1, 0, "")
+    if (cols(na) == 0) {
+        st_local("fw_na_cols", "0")
+        return
+    }
+    // Numbers in the list, such as -99, also apply to numeric columns.
+    nums = J(1, 0, .)
+    for (k = 1; k <= cols(na); k++) {
+        v = strtoreal(strtrim(na[k]))
+        if (v < .) nums = nums, v
+    }
+    for (j = 1; j <= st_nvar(); j++) {
+        if (!st_isstrvar(j)) {
+            hit = 0
+            for (k = 1; k <= cols(nums); k++) {
+                x = (st_vartype(j) == "float" ? "float(" + strofreal(nums[k], "%21.17g") + ")" : strofreal(nums[k], "%21.17g"))
+                stata("quietly count if " + st_varname(j) + " == " + x)
+                if (st_numscalar("r(N)") == 0) continue
+                stata("quietly replace " + st_varname(j) + " = . if " + st_varname(j) + " == " + x)
+                hit = 1
+            }
+            changed = changed + hit
+            continue
+        }
+        t = strtrim(st_sdata(., j))
+        isna = J(rows(t), 1, 0)
+        for (k = 1; k <= cols(na); k++) isna = isna :| (t :== strtrim(na[k]))
+        if (!any(isna)) continue
+        changed++
+        idx = selectindex(isna)
+        t[idx] = J(rows(idx), 1, "")
+        rest = select(t, t :!= "")
+        if (rows(rest) == 0 | !missing(strtoreal(rest))) {
+            st_sstore(., j, t)
+            conv = conv, st_varname(j)
+        }
+        else st_sstore(idx, j, J(rows(idx), 1, ""))
+    }
+    if (cols(conv)) {
+        rc = _stata("quietly destring " + invtokens(conv) + ", replace" + (asfloat ? " float" : ""), 1)
+        if (rc) fw_error("Could not convert " + invtokens(conv, ", ") + " to numbers after reading NA as missing.", rc)
+    }
+    st_local("fw_na_cols", strofreal(changed))
+}
+
+// Catalog aliases: stata_names maps a column name in the file to the
+// variable name Stata uses. The column name stays as the variable label.
+// Sets local fw_aliased.
+void fw_stata_names(string scalar record)
+{
+    S = fw_S()
+    base = "data." + record + ".stata_names"
+    keys = fw_children(S, base)
+    st_local("fw_aliased", "")
+    if (cols(keys) == 0) return
+    done = J(1, 0, "")
+    for (j = 1; j <= st_nvar(); j++) {
+        name = st_varname(j)
+        lab = st_varlabel(j)
+        orig = (lab != "" ? lab : name)
+        if (!anyof(keys, orig)) continue
+        alias = fw_setting(S, base + "." + orig)
+        if (alias == "" | alias == name) {
+            if (alias == name) done = done, alias
+            continue
+        }
+        if (!st_isname(alias) | ustrlen(alias) > 32) {
+            fw_error("stata_names for " + record + " maps " + orig + " to " + alias + ", which is not a valid Stata name." + fw_nl() +
+                "Use letters, digits, and underscores, at most 32 characters, not starting with a digit.", 198)
+        }
+        if (_st_varindex(alias, 0) < .) {
+            fw_error("stata_names for " + record + " maps " + orig + " to " + alias + ", but the file already has a column named " + alias + ".", 110)
+        }
+        st_varrename(j, alias)
+        st_varlabel(j, orig)
+        done = done, alias
+    }
+    st_local("fw_aliased", invtokens(done))
+}
+
+string scalar fw_smcl_escape(string scalar s)
+    return(subinstr(subinstr(subinstr(s, "{", char(1)), "}", "{c )-}"), char(1), "{c -(}"))
+
+// List the columns that import renamed: names over 32 characters, names
+// that are not valid Stata names, and repeated names. import delimited and
+// import excel keep the column name as the variable label. Lowercasing alone
+// is not listed. Sets local fw_renamed.
+void fw_import_renames(string scalar path)
+{
+    aliased = tokens(st_local("fw_aliased"))
+    old = J(0, 1, "")
+    renamed = J(0, 1, "")
+    for (j = 1; j <= st_nvar(); j++) {
+        name = st_varname(j)
+        lab = st_varlabel(j)
+        if (lab == "" | lab == name | ustrlower(lab) == ustrlower(name)) continue
+        if (cols(aliased)) {
+            if (anyof(aliased, name)) continue
+        }
+        old = old \ lab
+        renamed = renamed \ name
+    }
+    st_local("fw_renamed", strofreal(rows(old)))
+    if (rows(old) == 0) return
+    printf("{txt}Warning: Stata renamed %s column%s of %s on import:\n", strofreal(rows(old)), rows(old) == 1 ? "" : "s", fw_smcl_escape(fw_basename(path)))
+    w = max(udstrlen(old))
+    if (w > 40) w = 40
+    for (i = 1; i <= rows(old); i++) {
+        why = (ustrlen(old[i]) > 32 ? "  (longer than 32 characters)" : "")
+        printf("{txt}  %s%s -> {res}%s{txt}%s\n", fw_smcl_escape(old[i]), " " * max((0, w - udstrlen(old[i]))), renamed[i], why)
+    }
+    printf("{txt}Each variable keeps its column name as its label. To name the variables yourself, add stata_names to the catalog entry (see {help fw_use}).\n")
+}
+
+// fw_save to CSV or TSV under a catalog name with stata_names: write the
+// file's own column names in the header, so R and Python read the names
+// they expect.
+void fw_csv_restore_names(string scalar record, string scalar path, string scalar delim)
+{
+    S = fw_S()
+    base = "data." + record + ".stata_names"
+    keys = fw_children(S, base)
+    if (cols(keys) == 0) return
+    fh = fopen(path, "r")
+    header = fget(fh)
+    if (header == J(0, 0, "")) {
+        fclose(fh)
+        return
+    }
+    eol = ""
+    if (fw_endswith(header, char(13))) {
+        header = substr(header, 1, strlen(header) - 1)
+        eol = char(13)
+    }
+    names = fw__split_unquoted(header, delim)
+    changed = 0
+    for (i = 1; i <= cols(names); i++) {
+        for (k = 1; k <= cols(keys); k++) {
+            if (fw_setting(S, base + "." + keys[k]) != names[i]) continue
+            orig = keys[k]
+            if (strpos(orig, delim) | strpos(orig, fw_dq()) | strpos(orig, char(10))) {
+                orig = fw_dq() + subinstr(orig, fw_dq(), fw_dq() + fw_dq()) + fw_dq()
+            }
+            names[i] = orig
+            changed = 1
+            break
+        }
+    }
+    if (!changed) {
+        fclose(fh)
+        return
+    }
+    tmp = path + ".fwtmp"
+    fw_rm(tmp)
+    out = fopen(tmp, "w")
+    fwrite(out, invtokens(names, delim) + eol + char(10))
+    while ((chunk = fread(fh, 1048576)) != J(0, 0, "")) fwrite(out, chunk)
+    fclose(fh)
+    fclose(out)
+    fw_copy(tmp, path)
+    fw_rm(tmp)
+}
+
 // Whether the integrity ledger is live for this project.
 real scalar fw_ledger_live()
 {

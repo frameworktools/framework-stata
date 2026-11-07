@@ -333,4 +333,113 @@ local rc = _rc
 quietly cd `"`root'"'
 t_end `rc'
 
+* CSV files written by R: NA, doubles, and long column names.
+t_tmpdir
+local rp `"`r(dir)'"'
+mkdir `"`rp'/inputs"'
+mkdir `"`rp'/inputs/raw"'
+t_write `"`rp'/settings.yml"' ///
+    "default:" ///
+    "  directories:" ///
+    "    inputs_raw: inputs/raw" ///
+    "  data:" ///
+    "    inputs:" ///
+    "      raw:" ///
+    "        visits:" ///
+    "          path: inputs/raw/visits.csv" ///
+    "          stata_names:" ///
+    "            reason_ecmoref_refpicu_any_cardiac: reason_cardiac" ///
+    "            log1p_bchecmoref_to_bchadmit_days: log1p_days"
+t_write `"`rp'/inputs/raw/visits.csv"' ///
+    "ID,SBP Value,reason_ecmoref_refpicu_any_cardiac,log1p_bchecmoref_to_bchadmit_days,group,code,empty" ///
+    "1,75.2,NA,0.5,a,-99,NA" ///
+    "2,NA,2,NA,NA,7,NA"
+quietly cd `"`rp'"'
+fw_project, quietly
+
+t_begin data: fw_use reads R's NA as missing and decimals as double
+capture noisily {
+    t_log_begin
+    fw_use "inputs/raw/visits.csv", clear
+    local renamed = r(renamed)
+    local nacols = r(na_columns)
+    t_log_end
+    confirm double variable sbpvalue
+    assert sbpvalue[1] == 75.2
+    assert missing(sbpvalue[2])
+    confirm numeric variable reason_ecmoref_refpicu_any_cardi
+    assert missing(reason_ecmoref_refpicu_any_cardi[1]) & reason_ecmoref_refpicu_any_cardi[2] == 2
+    confirm string variable group
+    t_eq `"`=group[2]'"' ""
+    confirm numeric variable empty
+    assert missing(empty[1]) & missing(empty[2])
+    assert `nacols' == 5
+    * Renamed columns are listed, old name and new; lowercasing alone is not.
+    assert `renamed' == 3
+    t_log_has "Warning: Stata renamed 3 columns of visits.csv on import:"
+    t_log_has "reason_ecmoref_refpicu_any_cardiac"
+    t_log_has "-> reason_ecmoref_refpicu_any_cardi  (longer than 32 characters)"
+    t_log_has "SBP Value"
+    t_log_lacks "ID "
+}
+t_end `=_rc'
+
+t_begin data: fw_use asfloat and na() keep the old behavior on request
+capture noisily {
+    fw_use "inputs/raw/visits.csv", clear asfloat
+    confirm float variable sbpvalue
+    assert sbpvalue[1] == float(75.2)
+    fw_use "inputs/raw/visits.csv", clear na("")
+    confirm string variable sbpvalue
+    t_eq `"`=group[2]'"' "NA"
+    assert r(na_columns) == 0
+    fw_use "inputs/raw/visits.csv", clear na("NA" "-99")
+    confirm numeric variable code
+    assert missing(code[1]) & code[2] == 7
+    capture fw_use "inputs/raw/visits.csv", clear options(asfloat)
+    assert _rc == 0
+    confirm float variable sbpvalue
+}
+t_end `=_rc'
+
+t_begin data: catalog stata_names name the columns, and fw_save writes them back
+capture noisily {
+    t_log_begin
+    fw_use inputs.raw.visits, clear
+    local renamed = r(renamed)
+    t_log_end
+    confirm numeric variable reason_cardiac log1p_days
+    t_eq `"`: variable label reason_cardiac'"' "reason_ecmoref_refpicu_any_cardiac"
+    assert `renamed' == 1
+    t_log_lacks "-> reason_ecmoref"
+    * The catalog entry is unlocked: save it and read the header R sees.
+    fw_save inputs.raw.visits, replace
+    mata: L = fw_readlines(st_local("rp") + "/inputs/raw/visits.csv")
+    mata: assert(strpos(L[1], "reason_ecmoref_refpicu_any_cardiac") > 0)
+    mata: assert(strpos(L[1], "log1p_bchecmoref_to_bchadmit_days") > 0)
+    mata: assert(strpos(L[1], "reason_cardiac") == 0)
+    fw_use inputs.raw.visits, clear
+    confirm numeric variable reason_cardiac log1p_days
+}
+t_end `=_rc'
+
+t_begin data: a bad stata_names entry gives a clear error
+capture noisily {
+    t_write `"`rp'/settings.yml"' ///
+        "default:" ///
+        "  data:" ///
+        "    inputs:" ///
+        "      raw:" ///
+        "        visits:" ///
+        "          path: inputs/raw/visits.csv" ///
+        "          stata_names:" ///
+        "            group: 1group"
+    fw_project, quietly
+    capture fw_use inputs.raw.visits, clear
+    assert _rc == 198
+}
+t_end `=_rc'
+quietly cd `"`root'"'
+fw_project, quietly
+
 quietly cd `"$FW_TEST_REPO"'
