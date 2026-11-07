@@ -1,0 +1,49 @@
+name: Docs site
+
+# Builds docs-site.tar.gz for stata.framework.pub and attaches it to the
+# GitHub release; framework-cloud imports the newest one
+# (php artisan fw:docs-import stata --release).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Build the archive
+        run: |
+          python3 -m pip install --quiet pyyaml jsonschema
+          python3 scripts/build_docs.py
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: docs-site
+          path: docs-site.tar.gz
+
+  attach:
+    name: Attach to the release
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: docs-site
+      - name: Upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" docs-site.tar.gz --clobber --repo "$GITHUB_REPOSITORY"
