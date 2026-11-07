@@ -16,7 +16,7 @@ lines = [
     "d Python; fw and framework-py add GitHub and S3 publishing.",
     "d",
     "d Requires: Stata 14 or newer. curl for Framework Cloud.",
-    "d Distribution-Date: 20261105",
+    "d Distribution-Date: 20261107",
     "d Author: Framework contributors",
     "d Support: https://framework.pub",
 ]

@@ -10,7 +10,7 @@ version 14
 mata:
 mata set matastrict off
 
-string scalar fw_version() return("0.1.0")
+string scalar fw_version() return("0.1.1")
 
 // ---------------------------------------------------------------------------
 // Small helpers
