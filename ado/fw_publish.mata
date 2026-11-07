@@ -33,7 +33,10 @@ void fw_destination(string scalar to)
     }
     if (driver == "bucket") driver = "s3"
     if (!anyof(("cloud", "github", "folder", "s3"), driver)) {
-        fw_error("to() must be cloud, github, folder, s3, or a destination named in the project settings (got " + selected + ").", 198)
+        named = fw_children(S, "publish.destinations")
+        fw_error("to() must be cloud, github, folder, s3, or a destination named in the project settings (got " + selected + ")." + fw_nl() +
+            (cols(named) ? "Named destinations: " + invtokens(named, ", ") :
+                "This project names no destinations. Add them under publish.destinations in settings.yml."), 198)
     }
     path = (base != "" ? fw_setting(S, base + "path") : "")
     url = (base != "" ? fw_setting(S, base + "url") : "")

@@ -138,8 +138,12 @@ t_end `=_rc'
 
 t_begin publish: unknown destinations and missing files give clear errors
 capture noisily {
-    capture fw_publish "outputs/figures/price-mpg.png", to(nowhere)
-    assert _rc == 198
+    t_log_begin
+    capture noisily fw_publish "outputs/figures/price-mpg.png", to(nowhere)
+    local rc = _rc
+    t_log_end
+    assert `rc' == 198
+    t_log_has "Named destinations: lab, plain"
     capture fw_publish "outputs/figures/missing.png"
     assert _rc == 601
     capture fw_publish
