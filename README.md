@@ -12,6 +12,8 @@ catalog, and the same publishing destinations.
 | `fw_project` | Find the project and set path globals |
 | `fw_use` | Load a named dataset and check its integrity |
 | `fw_save` | Save a named dataset and record its integrity |
+| `fw_table` | Save the data in memory or a matrix as a table, with free-text headers |
+| `fw_graph` | Export a graph to the figures folder |
 | `fw_publish` | Publish a figure, table, document, or estimation results |
 | `fw_login` | Connect this computer to Framework Cloud |
 | `fw_logout` | Remove this computer's Cloud token |
@@ -103,6 +105,22 @@ It records the new checksum and keeps the file as it is.
 renames, such as a name longer than 32 characters. A catalog entry's
 `stata_names` maps such columns to names you choose, and `fw_save` writes the
 original names back. See `help fw_use` for `na()` and `asfloat`.
+
+## Tables and figures
+
+```stata
+fw_table "meeting/table-1" group n pct, headers("Group" "Patients" "Share, %")
+scatter mpg price
+fw_graph price-mpg, format(png pdf)
+```
+
+`fw_table` and `fw_graph` are the counterparts of `save_table()` and
+`save_figure()`. They write to the project's tables and figures folders,
+create subfolders named in the file name, and record each file with its
+checksum in `.framework/stata-results.tsv`. Table headers are free text:
+variable labels, or the words of `headers()`. `fw_table` also saves a matrix.
+In a sensitive project, both write to the private folders unless you add
+`public`.
 
 ## Publishing
 

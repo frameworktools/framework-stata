@@ -21,10 +21,13 @@ f ado/fw_cloud_sh.ihlp
 f ado/fw_core.mata
 f ado/fw_data.mata
 f ado/fw_estimates.mata
+f ado/fw_graph.ado
+f ado/fw_graph.sthlp
 f ado/fw_login.ado
 f ado/fw_login.sthlp
 f ado/fw_logout.ado
 f ado/fw_logout.sthlp
+f ado/fw_outputs.mata
 f ado/fw_project.ado
 f ado/fw_project.sthlp
 f ado/fw_publish.ado
@@ -37,5 +40,7 @@ f ado/fw_set.ado
 f ado/fw_set.sthlp
 f ado/fw_setup.ado
 f ado/fw_setup.sthlp
+f ado/fw_table.ado
+f ado/fw_table.sthlp
 f ado/fw_use.ado
 f ado/fw_use.sthlp

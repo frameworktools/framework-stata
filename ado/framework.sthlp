@@ -13,6 +13,8 @@
 {synopt:{helpb fw_project}}find the project and set path globals{p_end}
 {synopt:{helpb fw_use}}load a named dataset and check its integrity{p_end}
 {synopt:{helpb fw_save}}save a named dataset and record its integrity{p_end}
+{synopt:{helpb fw_table}}save a table with free-text headers to the tables folder{p_end}
+{synopt:{helpb fw_graph}}export a graph to the figures folder{p_end}
 {synopt:{helpb fw_publish}}publish a figure, table, document, or estimation results{p_end}
 {synopt:{helpb fw_login}}connect this computer to Framework Cloud{p_end}
 {synopt:{helpb fw_logout}}remove this computer's Cloud token{p_end}

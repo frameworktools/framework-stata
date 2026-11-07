@@ -14,15 +14,20 @@ categories:
     description: Named datasets and integrity checks
     position: 2
     common: [fw_use, fw_save]
+  - id: outputs
+    title: Outputs
+    description: Tables and figures saved and recorded
+    position: 3
+    common: [fw_table, fw_graph]
   - id: publishing
     title: Publishing
     description: Files and estimation results
-    position: 3
+    position: 4
     common: [fw_publish]
   - id: cloud
     title: Cloud
     description: Framework Cloud login and logout
-    position: 4
+    position: 5
     common: [fw_login]
 
 entries:
@@ -197,6 +202,122 @@ entries:
         code: fw_save inputs.final.analysis, replace unlocked
         runnable: false
     see_also: [fw_use, "guide:data"]
+
+  - id: fw_table
+    name: fw_table
+    kind: command
+    category: outputs
+    summary: Save the data in memory or a matrix as a table
+    usage: fw_table name [varlist] [if] [in] [, matrix(matname) headers(strings) varnames format(csv xlsx) public nolabel na(string) noreplace]
+    description: |
+      `fw_table` saves the data in memory, or a matrix, as a table in the project's tables folder, as `save_table()` does in R and Python. Headers are free text, such as `All patients, n (%)`: each variable's label, or the words of `headers()`. The data in memory are not changed.
+
+      *name* names the file without its extension. It may hold subfolders, such as `meeting/table-1`, which `fw_table` creates. A name that ends in `.csv` or `.xlsx` picks that format.
+    details: |
+      The folder is the project's `outputs_tables` folder, else `outputs/tables`. A project with `security: sensitive: true`, or with `outputs_private_tables` or `outputs_public_tables` folders, keeps private and public tables apart: tables go to the private folder unless you add `public`. A public table made from data in a file with "private" in its path gets a warning.
+
+      Each file is recorded in `.framework/stata-results.tsv` by its path from the project root, with its type, whether it is public, its SHA-256 checksum, and the time. R and Python record the same fields in `framework.db`, which Stata cannot read.
+
+      CSV files follow R's `write_csv()`: missing numbers are `NA`, numbers have the fewest digits that read back as the same value, value labels are written as text, dates as `2026-11-07`, and fields are quoted only when needed. Excel files are written with `export excel`; their headers hold at most 80 characters.
+
+      A matrix is written with its column names as headers. Row names that are not Stata's defaults (`r1`, `r2`, ...) become a first column with an empty header.
+    parameters:
+      - name: name
+        required: true
+        description: The file name without its extension, with any subfolders.
+      - name: matrix(matname)
+        description: Saves a Stata matrix rather than the data in memory.
+      - name: headers(strings)
+        description: One header for each column, in order. Quote headers with spaces.
+      - name: varnames
+        description: Uses variable names as headers, even for labeled variables.
+      - name: format(csv xlsx)
+        default: csv
+        description: The file types. `format(csv xlsx)` writes both.
+      - name: public
+        description: Saves to the public tables folder of a project that splits private and public outputs.
+      - name: nolabel
+        description: Writes the codes of labeled variables rather than their labels.
+      - name: na(string)
+        default: NA
+        description: The text for missing numbers in CSV files.
+      - name: noreplace
+        description: Stops with error 602 when the file exists. By default `fw_table` overwrites it, as `save_table()` does.
+    returns: |
+      - `r(path)`: the first file
+      - `r(paths)`: every file
+      - `r(sha256)`: the first file's checksum
+      - `r(format)`: the formats written
+      - `r(public)`: 1 with `public`
+      - `r(N)`, `r(k)`: the rows and columns written
+    examples:
+      - code: |
+          sysuse auto, clear
+          label variable price "Price, US$"
+          fw_table cars make price mpg
+        runnable: false
+      - title: Free-text headers, a subfolder, and Excel
+        code: fw_table "meeting/table-1" group n pct, headers("Group" "Patients" "Share, %") format(csv xlsx)
+        runnable: false
+      - title: A matrix
+        code: |
+          tabstat price mpg, by(foreign) save
+          matrix S = r(StatTotal)
+          fw_table totals, matrix(S) public
+        runnable: false
+    see_also: [fw_graph, fw_publish]
+
+  - id: fw_graph
+    name: fw_graph
+    kind: command
+    category: outputs
+    summary: Export a graph to the figures folder and record it
+    usage: fw_graph name [, name(graphname) format(types) public dpi(#) width(#) height(#) options(string) noreplace]
+    description: |
+      `fw_graph` exports a graph to the project's figures folder with `graph export`, as `save_figure()` does in R and Python, and records each file.
+
+      *name* names the file without its extension. It may hold subfolders, such as `meeting/figure-1`, which `fw_graph` creates. A name that ends in a file type, such as `figure-1.pdf`, picks that type.
+    details: |
+      The folder is the project's `outputs_figures` folder, else `outputs/figures`. Sensitive projects keep private and public figures apart, as `fw_table` does for tables.
+
+      Each file is recorded in `.framework/stata-results.tsv`, as `fw_table` records tables.
+
+      File types are those `graph export` writes: `png`, `pdf`, `svg`, `eps`, `ps`, `tif`, `jpg`, `gif`, `emf`, and `wmf`. Stata for Unix writes no GIF, and EMF and WMF need Windows.
+    parameters:
+      - name: name
+        required: true
+        description: The file name without its extension, with any subfolders.
+      - name: name(graphname)
+        description: Exports a named graph. `fw_graph` displays it first, so it becomes the current graph, because `graph export, name()` needs a graph window, which batch mode lacks.
+      - name: format(types)
+        default: png
+        description: One or more file types, such as `format(png pdf)`.
+      - name: public
+        description: Saves to the public figures folder of a project that splits private and public outputs.
+      - name: dpi(#)
+        default: "300"
+        description: Raster files are the graph's width in inches times this many pixels, as `save_figure()` uses `dpi = 300`.
+      - name: width(#), height(#)
+        description: The raster size in pixels, in place of `dpi()`.
+      - name: options(string)
+        description: More options for `graph export`.
+      - name: noreplace
+        description: Stops with error 602 when the file exists. By default `fw_graph` overwrites it.
+    returns: |
+      - `r(path)`: the first file
+      - `r(paths)`: every file
+      - `r(sha256)`: the first file's checksum
+      - `r(format)`: the formats written
+      - `r(public)`: 1 with `public`
+    examples:
+      - code: |
+          scatter mpg price
+          fw_graph price-mpg
+        runnable: false
+      - title: Two formats in a subfolder
+        code: fw_graph "meeting/figure-1", format(png pdf) public
+        runnable: false
+    see_also: [fw_table, fw_publish]
 
   - id: fw_publish
     name: fw_publish

@@ -5,7 +5,7 @@ program define _fw_init
     capture mata: fw_loaded()
     if !_rc exit
     capture mata: mata drop fw_*() fw__*()
-    foreach f in fw_core fw_data fw_estimates fw_publish fw_cloud {
+    foreach f in fw_core fw_data fw_estimates fw_publish fw_outputs fw_cloud {
         capture findfile `f'.mata
         if _rc {
             display as error "The framework package is incomplete: `f'.mata is missing."
