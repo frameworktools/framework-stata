@@ -68,6 +68,10 @@ program define fw_use, rclass
     else if "`fw_record'" != "" & "`check'" != "off" & !(`fw_locked' & ("`fw_changed'" == "1" | "`fw_sigchanged'" == "1")) {
         mata: fw_integrity_record(st_local("fw_root"), st_local("fw_record"), st_local("fw_path"), st_local("fw_sha"), st_local("sig"), `fw_locked')
     }
+    * The file the data in memory came from, for fw_publish, estimates.
+    * c(filename) tells whether a plain use or save has replaced it since.
+    global fw__data_source `"`fw_path'"'
+    global fw__data_filename `"`c(filename)'"'
     mata: st_local("rel", fw_relpath(st_local("fw_path"), st_local("fw_root")))
     display as text `"Loaded {res}`name'{txt} from `rel' ("' as result c(N) as text " observations)"
     return local name `"`name'"'

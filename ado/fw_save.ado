@@ -38,6 +38,10 @@ program define fw_save, rclass
             capture noisily mata: fw_ledger_push(st_local("fw_root"), st_local("fw_record"), st_local("fw_sha"), st_local("fw_path"))
         }
     }
+    * The file the data in memory came from, for fw_publish, estimates.
+    * c(filename) tells whether a plain use or save has replaced it since.
+    global fw__data_source `"`fw_path'"'
+    global fw__data_filename `"`c(filename)'"'
     mata: st_local("rel", fw_relpath(st_local("fw_path"), st_local("fw_root")))
     local short = substr("`fw_sha'", 1, 12)
     if "`short'" != "" local short " (SHA-256 `short'…)"

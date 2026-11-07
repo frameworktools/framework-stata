@@ -82,14 +82,26 @@ program define fw_publish, rclass
             local rfile `"`file'"'
         }
 
-        * The private-path rule, shared with R, Python, and fw.
+        * The private-path rule, shared with R, Python, and fw. Estimates
+        * go through a scratch file, so the rule checks the file the data
+        * in memory came from: the last fw_use or fw_save, or c(filename)
+        * when a plain use or save has loaded another file since.
+        local datasrc
+        if "`estimates'" != "" {
+            local datasrc `"`c(filename)'"'
+            if `"$fw__data_source"' != "" & `"`c(filename)'"' == `"$fw__data_filename"' local datasrc `"$fw__data_source"'
+        }
         local include_private = ("`includeprivate'" != "")
         if !`include_private' {
-            mata: st_local("nflag", strofreal(rows(fw_private_flagged(fw_publish_sources(st_local("file"))))))
+            mata: fw__flagged = fw_private_flagged(fw_publish_sources(st_local("file")) \ ///
+                (st_local("datasrc") != "" ? fw_abs(st_local("datasrc")) : J(0, 1, "")))
+            mata: st_local("nflag", strofreal(rows(fw__flagged)))
             if `nflag' {
-                mata: st_local("flagged", invtokens(fw_private_flagged(fw_publish_sources(st_local("file")))', char(10)))
-                display as text "Warning: `nflag' file(s) to publish have 'private' in their path:"
-                mata: printf("{txt}  %s\n", invtokens(fw_private_flagged(fw_publish_sources(st_local("file")))', char(10) + "  "))
+                if "`estimates'" != "" {
+                    display as text "Warning: these estimation results come from data in a file with 'private' in its path:"
+                }
+                else display as text "Warning: `nflag' file(s) to publish have 'private' in their path:"
+                mata: printf("{txt}  %s\n", invtokens(fw__flagged', char(10) + "  "))
                 if c(mode) == "batch" {
                     display as error "Not publishing files with 'private' in their path without confirmation."
                     display as error "Review them, then add the includeprivate option to publish them."

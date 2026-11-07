@@ -210,6 +210,8 @@ entries:
       - title: Private paths
         content: |
           A file whose full path contains "private", in any case, needs confirmation. Interactive Stata asks. Batch mode stops with error 198 until you add the `includeprivate` option. R, Python, and `fw` follow the same rule. The `private` option sets visibility, not this confirmation.
+
+          With `estimates`, the rule checks the file the data in memory came from: the last `fw_use` or `fw_save`, or `c(filename)` when a plain `use` or `save` has loaded another file since. Results fit to data from a path with "private" in it need the same confirmation.
     parameters:
       - name: filename
         description: The file to publish. Leave it out with `estimates`.

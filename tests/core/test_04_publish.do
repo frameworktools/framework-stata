@@ -213,4 +213,38 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin publish: estimates fit to private data need includeprivate
+capture noisily {
+    capture mkdir `"`root'/outputs/private"'
+    sysuse auto, clear
+    fw_save "outputs/private/cars.dta", replace
+    quietly regress price mpg
+    t_log_begin
+    capture noisily fw_publish, estimates slug(private-model)
+    local rc = _rc
+    t_log_end
+    assert `rc' == 198
+    t_log_has "these estimation results come from data in a file with 'private' in its path"
+    capture confirm file `"`root'/site/private-model/index.html"'
+    assert _rc
+    fw_publish, estimates slug(private-model) includeprivate
+    confirm file `"`root'/site/private-model/index.html"'
+    * A CSV import leaves c(filename) empty; the fw_use source still counts.
+    fw_save "outputs/private/cars.csv", replace
+    fw_use "outputs/private/cars.csv", clear
+    quietly regress price mpg
+    capture fw_publish, estimates slug(private-model-2)
+    assert _rc == 198
+    * A plain use of another file replaces the fw_use source.
+    sysuse auto, clear
+    quietly regress price mpg
+    fw_publish, estimates slug(public-model)
+    * A plain use of a private file counts too.
+    use `"`root'/outputs/private/cars.dta"', clear
+    quietly regress price mpg
+    capture fw_publish, estimates slug(private-model-3)
+    assert _rc == 198
+}
+t_end `=_rc'
+
 quietly cd `"$FW_TEST_REPO"'

@@ -100,6 +100,12 @@ Interactive Stata asks. Batch mode stops with error 198 until you add the
 {opt includeprivate} option. R, Python, and {bf:fw} follow the same rule.
 The {opt private} option sets visibility, not this confirmation.
 
+{pstd}
+With {opt estimates}, the rule checks the file the data in memory came from:
+the last {helpb fw_use} or {helpb fw_save}, or {cmd:c(filename)} when a plain
+{cmd:use} or {cmd:save} has loaded another file since. Results fit to data
+from a path with "private" in it need the same confirmation.
+
 
 {title:Options for estimates}
 
