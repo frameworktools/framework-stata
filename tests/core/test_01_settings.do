@@ -231,3 +231,66 @@ capture noisily {
     t_eq `"`r(name)'"' `"`base'"'
 }
 t_end `=_rc'
+
+t_begin settings: settings.yml and settings.do together, as fw writes a Stata project
+capture noisily {
+    t_tmpdir
+    local s `"`r(dir)'"'
+    * settings.do holds the folders, settings.yml everything shared with R and Python.
+    mata: d = char(36); o = char(96) + char(34); c = char(34) + char(39); n = char(10)
+    mata: fw_writefile(st_local("s") + "/settings.do", ///
+        "global root " + o + char(96) + "c(pwd)'" + c + n + ///
+        "global inputs_private_raw " + o + d + "root/inputs/private/raw" + c + n + ///
+        "global inputs_public_final " + o + d + "root/inputs/public/final" + c + n + ///
+        "global outputs_private_tables " + o + d + "root/outputs/private/tables" + c + n + ///
+        "global outputs_public_tables " + o + d + "root/outputs/public/tables" + c + n + ///
+        "global logs " + o + d + "root/logs" + c + n)
+    t_write `"`s'/settings.yml"' ///
+        "default:" ///
+        "  project_name: both-files" ///
+        "  security:" ///
+        "    sensitive: true" ///
+        "  directories:" ///
+        "    logs: run-logs" ///
+        "  data:" ///
+        "    inputs:" ///
+        "      public:" ///
+        "        cars:" ///
+        "          path: inputs/public/final/cars.csv" ///
+        "  publish:" ///
+        "    default: local" ///
+        "    destinations:" ///
+        "      local:" ///
+        "        driver: folder" ///
+        "        path: published" ///
+        "        visibility: public"
+    quietly cd `"`s'"'
+    t_log_begin
+    fw_project
+    local name `"`r(name)'"'
+    local conflicts `"`r(conflicts)'"'
+    t_log_end
+    t_eq `"`name'"' "both-files"
+    t_eq `"$fw_inputs_private_raw"' `"`s'/inputs/private/raw"'
+    t_eq `"$fw_outputs_public_tables"' `"`s'/outputs/public/tables"'
+    * A folder both files set: settings.yml wins, and fw_project says so.
+    t_eq `"$fw_logs"' `"`s'/run-logs"'
+    t_eq `"`conflicts'"' "logs"
+    t_log_has "settings.yml and settings.do set the folder logs differently. Using settings.yml: run-logs"
+    * The catalog, fw_table's private and public split, and publish
+    * destinations come from settings.yml; the folders from settings.do.
+    sysuse auto, clear
+    keep make price
+    fw_save "inputs/public/final/cars.csv", replace
+    fw_use inputs.public.cars, clear
+    assert c(N) == 74
+    fw_table cars
+    t_eq `"`r(path)'"' `"`s'/outputs/private/tables/cars.csv"'
+    fw_table cars, public
+    fw_publish `"`r(path)'"'
+    t_eq `"`r(destination)'"' "local"
+    confirm file `"`s'/published/cars/cars.csv"'
+}
+local rc = _rc
+quietly cd `"$FW_TEST_REPO"'
+t_end `rc'

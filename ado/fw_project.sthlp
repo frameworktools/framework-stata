@@ -43,6 +43,16 @@ that {bf:fw} created for Stata keep their folders in {bf:settings.do};
 such as {cmd:$inputs_raw}, untouched.
 
 {pstd}
+A project may have both files. {bf:settings.do} holds folder globals for plain
+do-files; {bf:settings.yml} holds what Stata shares with R, Python, and
+{bf:fw}: {bf:project_name}, {bf:directories}, the data catalog, {bf:publish}
+destinations, {bf:security}, and {bf:options}. {cmd:fw_project} reads
+{bf:settings.yml} first and adds the folders of {bf:settings.do} that it does
+not set, and every Framework command works from that merged view. When both
+set a folder to different paths, {bf:settings.yml} wins, and {cmd:fw_project}
+prints a note and lists the folder in {cmd:r(conflicts)}.
+
+{pstd}
 Other commands run {cmd:fw_project} themselves when no project is loaded.
 Run it again after you change to another project.
 
@@ -68,4 +78,5 @@ Run it again after you change to another project.
 {p2col:{cmd:r(root)}}the project folder{p_end}
 {p2col:{cmd:r(name)}}the project name{p_end}
 {p2col:{cmd:r(folders)}}the folder keys{p_end}
+{p2col:{cmd:r(conflicts)}}folders that settings.yml and settings.do set differently{p_end}
 {p2colreset}{...}

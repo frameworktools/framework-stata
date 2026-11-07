@@ -74,6 +74,14 @@ error, and so does a tab in the indentation. Projects that `fw new --lang
 stata` created keep their folders in `settings.do`, and `fw_project` reads
 those too.
 
+A project may have both files. `settings.do` holds folder globals for plain
+do-files. `settings.yml` holds what Stata shares with R, Python, and `fw`:
+`project_name`, `directories`, the data catalog, `publish` destinations,
+`security`, and `options`. `fw_project` reads `settings.yml` first and adds
+the folders of `settings.do` it does not set; every command works from that
+merged view. When both set a folder differently, `settings.yml` wins and
+`fw_project` prints a note.
+
 ## Named datasets and integrity
 
 ```stata

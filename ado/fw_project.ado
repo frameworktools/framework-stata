@@ -9,4 +9,5 @@ program define fw_project, rclass
     return local root `"$fw_root"'
     return local name `"$fw_project_name"'
     return local folders `"$fw_dir_list"'
+    return local conflicts `"$fw_settings_conflicts"'
 end

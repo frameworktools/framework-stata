@@ -85,6 +85,8 @@ entries:
 
       Settings come from `settings.yml`, with split files such as `settings/data.yml` and environment sections. The active environment is `FW_CONFIG_ACTIVE`, then `R_CONFIG_ACTIVE`, then `R_CONFIG_NAME`, then `default`. Projects that `fw` created for Stata keep their folders in `settings.do`; `fw_project` reads those too and leaves the globals of `settings.do`, such as `$inputs_raw`, untouched.
 
+      A project may have both files. `settings.do` holds folder globals for plain do-files; `settings.yml` holds what Stata shares with R, Python, and `fw`: `project_name`, `directories`, the data catalog, `publish` destinations, `security`, and `options`. `fw_project` reads `settings.yml` first and adds the folders of `settings.do` that it does not set, and every Framework command works from that merged view. When both set a folder to different paths, `settings.yml` wins, and `fw_project` prints a note.
+
       Other commands run `fw_project` themselves when no project is loaded. Run it again after you change to another project.
     parameters:
       - name: root(folder)
@@ -95,6 +97,7 @@ entries:
       - `r(root)`: the project folder
       - `r(name)`: the project name
       - `r(folders)`: the folder keys
+      - `r(conflicts)`: the folders that `settings.yml` and `settings.do` set differently
     examples:
       - code: |
           fw_project

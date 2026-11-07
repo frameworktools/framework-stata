@@ -929,7 +929,14 @@ void fw__settings_do(transmorphic S, string scalar file, string scalar root)
         if (fw_startswith(val, root_ref)) val = substr(val, strlen(root_ref) + 1, .)
         else if (!fw_isabs(val) | strpos(val, char(36)) | strpos(val, char(96))) continue
         key = "directories." + name
-        if (asarray_contains(S, key)) continue
+        if (asarray_contains(S, key)) {
+            // settings.yml wins. Note a folder the two files set differently.
+            if (fw_abs(fw_setting(S, key), root) != fw_abs(val, root)) {
+                have = asarray(S, "__conflicts")
+                asarray(S, "__conflicts", have + (have == "" ? "" : char(31)) + name)
+            }
+            continue
+        }
         asarray(S, key, val)
         have = asarray(S, "directories.@")
         asarray(S, "directories.@", have + (have == "" ? "" : char(31)) + name)
@@ -1031,7 +1038,13 @@ void fw_project_load(string scalar start, real scalar quiet)
     if (!anyof(names, "outputs") & direxists(root + "/outputs")) st_global("fw_outputs", root + "/outputs")
     st_global("fw_dir_list", invtokens(names))
     st_global("fw_project_name", fw_project_name(S))
+    conflicts = fw__drop_sep(tokens(asarray(S, "__conflicts"), char(31)))
+    st_global("fw_settings_conflicts", invtokens(conflicts))
     if (!quiet) {
+        for (i = 1; i <= cols(conflicts); i++) {
+            printf("{txt}Note: settings.yml and settings.do set the folder %s differently. Using settings.yml: %s\n",
+                conflicts[i], fw_relpath(fw_abs(fw_setting(S, "directories." + conflicts[i]), root), root))
+        }
         printf("{txt}Project: {res}%s\n", st_global("fw_project_name"))
         printf("{txt}Root:    {res}%s\n", root)
         if (rows(d)) {

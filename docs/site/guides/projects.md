@@ -118,6 +118,19 @@ global outputs_figures `"$root/outputs/figures"'
 
 `fw_project` reads each `global` line whose path starts with `$root/` or `${root}/`, or is an absolute path, and sets `$fw_inputs_raw` and the rest. It skips other lines, such as paths built from other globals. It leaves the project's own globals, such as `$inputs_raw`, untouched.
 
+## settings.do and settings.yml together
+
+A Stata project can have both files. They divide the work:
+
+| File | Holds | Read by |
+|------|-------|---------|
+| `settings.do` | Folder globals, such as `$inputs_raw` | Plain Stata do-files, without the package, and `fw_project` |
+| `settings.yml` | `project_name`, `directories`, the data catalog (`data`), `publish` destinations, `security`, and `options` | `fw_project` and every Framework command, R, Python, and `fw` |
+
+Stata reads YAML: `fw_project` reads `settings.yml` first and adds the folders of `settings.do` that `settings.yml` does not set. Every command then works from that one merged view: `fw_use` and `fw_save` take the catalog from it, `fw_table` and `fw_graph` the private and public split, and `fw_publish` the destinations.
+
+When both files set the same folder to different paths, `settings.yml` wins. `fw_project` prints a note for each such folder and lists them in `r(conflicts)`. Keep the two in step, or set folders in one file only.
+
 ## Stored results
 
-`fw_project` stores `r(root)`, `r(name)`, and `r(folders)`, the list of folder keys.
+`fw_project` stores `r(root)`, `r(name)`, `r(folders)`, the list of folder keys, and `r(conflicts)`, the folders that `settings.yml` and `settings.do` set differently.
