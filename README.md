@@ -27,22 +27,18 @@ to Framework Cloud, and Cloud login itself. Python is not needed.
 
 ## Install
 
-From a checkout of this repository:
-
 ```stata
-net install framework, from("/path/to/framework-stata") replace
+net install framework, from("https://raw.githubusercontent.com/frameworktools/framework-stata/main") replace
 fw_setup
 ```
 
 `fw_setup` lists what works and the exact steps for anything missing.
 
-Once the GitHub repository is public, install from it:
+To install from a checkout of this repository, point `from()` at its folder:
 
 ```stata
-net install framework, from("https://raw.githubusercontent.com/frameworktools/framework-stata/main") replace
+net install framework, from("/path/to/framework-stata") replace
 ```
-
-That address returns an error until then.
 
 ## Quick start
 

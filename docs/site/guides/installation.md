@@ -23,9 +23,7 @@ Install from GitHub with `net install`.
 net install framework, from("https://raw.githubusercontent.com/frameworktools/framework-stata/main") replace
 ```
 
-The GitHub repository is not published yet, so this address returns an error for now. It works once the repository is public. Until then, install from a local copy.
-
-From a local copy of the repository, point `from()` at its folder.
+To install from a local copy of the repository, point `from()` at its folder.
 
 ```stata
 net install framework, from("/path/to/framework-stata") replace
