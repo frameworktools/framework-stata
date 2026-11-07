@@ -208,6 +208,24 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin cloud: a folder uploads as one bundle with its front page
+capture noisily {
+    mkdir `"`root'/figs"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/figs/a.png"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/figs/b.png"'
+    fw_publish "figs/*.png", to(cloud) title("Figures")
+    t_eq `"`r(slug)'"' "figs"
+    assert r(files) == 2
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "form.slug") == "figs")
+    mata: assert(fw_get(U, "form.entrypoint") == "index.html")
+    mata: assert(fw_get(U, "form.bundle.filename") == "bundle.zip")
+    mata: assert(fw_get(U, "form.title") == "Figures")
+}
+t_end `=_rc'
+
 t_begin cloud: a missing project token names the fix
 capture noisily {
     t_write `"`root'/.env"' "FW_CLOUD_URL=http://127.0.0.1:`port'"

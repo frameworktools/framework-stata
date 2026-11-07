@@ -73,6 +73,70 @@ string colvector fw_private_flagged(string colvector files)
     return(out)
 }
 
+// What a publish of path covers: one file, a folder (every file in it and its
+// subfolders), or a wildcard such as outputs/figures/*.png (the matching
+// files in that folder). Sets locals file (absolute), fw_isdir, and fw_wild,
+// and the externals fw__srcdir and fw__selected (paths inside the folder).
+void fw_publish_select(string scalar path)
+{
+    if ((sel = findexternal("fw__selected")) == NULL) sel = crexternal("fw__selected")
+    if ((src = findexternal("fw__srcdir")) == NULL) src = crexternal("fw__srcdir")
+    full = fw_abs(path)
+    base = fw_basename(full)
+    *sel = J(0, 1, "")
+    *src = ""
+    st_local("fw_isdir", "0")
+    st_local("fw_wild", "0")
+    st_local("file", full)
+    if (direxists(full)) {
+        *src = full
+        *sel = fw_walk(full)
+        if (rows(*sel) == 0) fw_error("The folder " + full + " has no files to publish.", 601)
+        st_local("fw_isdir", "1")
+        return
+    }
+    if (strpos(base, "*") | strpos(base, "?")) {
+        folder = fw_dirname(full)
+        if (!direxists(folder)) fw_error("Folder not found: " + folder, 601)
+        *src = folder
+        *sel = sort(dir(folder, "files", base, 0), 1)
+        if (rows(*sel) == 0) fw_error("No files match " + full + ".", 601)
+        st_local("fw_isdir", "1")
+        st_local("fw_wild", "1")
+        st_local("file", folder)
+    }
+}
+
+// The files a publish reads, for the private-path check.
+string colvector fw_publish_files(string scalar file, real scalar isdir)
+{
+    if (!isdir) return(fw_publish_sources(file))
+    return(*findexternal("fw__srcdir") :+ "/" :+ *findexternal("fw__selected"))
+}
+
+// Copy the selected files into a staging folder, keeping their paths.
+void fw_stage_selected(string scalar srcdir, string colvector files, string scalar stage)
+{
+    fw_mkdirp(stage)
+    for (i = 1; i <= rows(files); i++) {
+        fw_mkdirp(fw_dirname(stage + "/" + files[i]))
+        fw_copy(srcdir + "/" + files[i], stage + "/" + files[i])
+    }
+}
+
+// A folder with no page of its own gets an index.html that links each file,
+// as framework-py writes for a published folder.
+void fw_dir_index(string scalar folder)
+{
+    if (fileexists(folder + "/index.html")) return
+    files = fw_walk(folder)
+    links = ""
+    for (i = 1; i <= rows(files); i++) {
+        links = links + "<li><a href=" + fw_dq() + fw_url_quote(files[i]) + fw_dq() + ">" + fw_html_escape(files[i]) + "</a></li>"
+    }
+    fw_writefile(folder + "/index.html", "<!doctype html><meta charset=" + fw_dq() + "utf-8" + fw_dq() + "><title>Files</title><ul>" + links + "</ul>")
+}
+
 // ---------------------------------------------------------------------------
 // Bundles
 // ---------------------------------------------------------------------------
@@ -193,6 +257,56 @@ string scalar fw_bundle_build(string scalar src_in, string scalar target, string
         if (rep == "" & kind == "html") fw_copy(target + "/" + original, target + "/index.html")
         else fw_writefile(target + "/index.html", fw_reader_html(m + "}", rep, title))
     }
+    files = fw_walk(target)
+    files = select(files, files :!= "artifact.json")
+    full = J(rows(files), 1, "")
+    for (i = 1; i <= rows(files); i++) full[i] = target + "/" + files[i]
+    sums = fw_sha256(full, dir)
+    if (rows(sums) & anyof(sums, "")) {
+        fw_error("Publishing needs a SHA-256 tool for the bundle checksums, and none was found. Run fw_setup for details.", 601)
+    }
+    m = m + "," + fw_json_str("files") + ":["
+    for (i = 1; i <= rows(files); i++) {
+        m = m + (i > 1 ? "," : "") + "{" + fw_json_str("path") + ":" + fw_json_str(files[i]) + "," +
+            fw_json_str("bytes") + ":" + fw_json_num(fw_filesize(full[i])) + "," +
+            fw_json_str("sha256") + ":" + fw_json_str(sums[i]) + "}"
+    }
+    m = m + "]}"
+    fw_writefile(target + "/artifact.json", m)
+    st_local("fw_slug", slug)
+    st_local("fw_kind", kind)
+    st_local("fw_title", title)
+    return(m)
+}
+
+// Build a framework.bundle/v1 folder from selected files of a folder, as
+// framework-py builds one for a published folder: the files keep their
+// paths, kind is html, and a folder without index.html gets a file list.
+// Returns the manifest JSON. Sets locals fw_slug, fw_kind, fw_title.
+string scalar fw_bundle_build_dir(string scalar srcdir, string colvector selected, string scalar target,
+    string scalar slug_in, string scalar title_in, string scalar descr, string scalar kind_in, string scalar dir)
+{
+    fw_stage_selected(srcdir, selected, target)
+    if (fileexists(target + "/artifact.json") | fileexists(target + "/representation.json")) {
+        fw_error("A published folder cannot hold artifact.json or representation.json at its top. Framework writes those.", 198)
+    }
+    fw_dir_index(target)
+    name = fw_basename(srcdir)
+    slug = fw_slug(slug_in != "" ? slug_in : name)
+    if (slug == "") fw_error("An artifact name needs a letter or number. Give one with slug().", 198)
+    title = (title_in != "" ? title_in : name)
+    kind = (kind_in != "" ? kind_in : "html")
+    m = "{" + fw_json_str("schema") + ":" + fw_json_str("framework.bundle/v1") + "," +
+        fw_json_str("slug") + ":" + fw_json_str(slug) + "," +
+        fw_json_str("title") + ":" + fw_json_str(title) + "," +
+        fw_json_str("description") + ":" + fw_json_strornull(descr) + "," +
+        fw_json_str("kind") + ":" + fw_json_str(kind) + "," +
+        fw_json_str("entrypoint") + ":" + fw_json_str("index.html") + "," +
+        fw_json_str("representation") + ":null," +
+        fw_json_str("original") + ":null," +
+        fw_json_str("source") + ":{" + fw_json_str("language") + ":" + fw_json_str("stata") + "}," +
+        fw_json_str("created_at") + ":" + fw_json_str(fw_now_utc(dir)) + "," +
+        fw_json_str("generator") + ":" + fw_json_str("framework-stata " + fw_version())
     files = fw_walk(target)
     files = select(files, files :!= "artifact.json")
     full = J(rows(files), 1, "")
@@ -359,7 +473,31 @@ void fw_cloud_publish(string scalar root, string scalar src_in, string scalar sl
     ext = fw_ext(src)
     form = J(0, 3, "")
     assets = fw_dirname(src) + "/" + fw_stem(src) + "_files"
-    if ((ext == ".html" | ext == ".htm") & direxists(assets)) {
+    if (direxists(src)) {
+        // A folder goes as a zip with its front page: index.html, else the
+        // first page at its top. The caller adds a file list when it has none.
+        pages = sort(dir(src, "files", "*.htm*", 0), 1)
+        entry = (anyof(pages, "index.html") ? "index.html" : (rows(pages) ? pages[1] : ""))
+        if (entry == "") {
+            fw_scratch_done(d)
+            fw_error("The folder " + src + " has no HTML page at its top to open.", 198)
+        }
+        top = sort(dir(src, "files", "*", 0), 1) \ sort(dir(src, "dirs", "*", 0), 1)
+        top = select(top, top :!= "." :& top :!= "..")
+        args = ""
+        for (i = 1; i <= rows(top); i++) args = args + " " + fw_cq(top[i])
+        zip = d + "/bundle.zip"
+        here = pwd()
+        chdir(src)
+        rc = _stata("quietly zipfile" + args + ", saving(" + fw_cq(zip) + ", replace)", 1)
+        chdir(here)
+        if (rc) {
+            fw_scratch_done(d)
+            fw_error("Could not zip the folder " + src + ".", rc)
+        }
+        form = form \ ("bundle", zip, "1") \ ("entrypoint", entry, "0")
+    }
+    else if ((ext == ".html" | ext == ".htm") & direxists(assets)) {
         stage = d + "/bundle"
         fw_mkdirp(stage)
         fw_copy(src, stage + "/" + fw_basename(src))
@@ -376,7 +514,7 @@ void fw_cloud_publish(string scalar root, string scalar src_in, string scalar sl
         form = form \ ("bundle", zip, "1") \ ("entrypoint", fw_basename(src), "0")
     }
     else form = form \ ("file", src, "1")
-    name = (slug != "" ? slug : fw_stem(src))
+    name = (slug != "" ? slug : (direxists(src) ? fw_basename(src) : fw_stem(src)))
     if (regexm(name, "^(.*)[.]html?$")) name = regexs(1)
     form = form \ ("slug", name, "0")
     // Visibility goes only when asked for. Cloud keeps an artifact's current
@@ -471,7 +609,7 @@ void fw_bridge_result(string scalar file)
 // The artifact name a backend uses when it does not report one.
 string scalar fw_default_slug(string scalar src, string scalar slug)
 {
-    name = (slug != "" ? slug : fw_stem(src))
+    name = (slug != "" ? slug : (direxists(src) ? fw_basename(src) : fw_stem(src)))
     return(fw_slug(name))
 }
 

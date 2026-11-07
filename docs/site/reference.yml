@@ -326,9 +326,12 @@ entries:
     summary: Publish a figure, table, document, or estimation results
     usage: |
       fw_publish filename [, options]
+      fw_publish folder | folder/pattern [, options]
       fw_publish, estimates [options level(#) saving(filename [, replace])]
     description: |
       `fw_publish` publishes one file: a figure, a table, a rendered HTML document with its *name*`_files` folder, or any other file. Each publish adds a version and keeps the earlier ones.
+
+      `fw_publish` with a folder publishes every file in it and its subfolders as one artifact, as `publish_dir()` does in R and Python. A wildcard such as `outputs/figures/*.png` publishes the matching files in that folder. The files keep their paths, the slug and title default to the folder's name, and a folder without an `index.html` gets one that links each file. Every file is checked by the private-path rule.
 
       `fw_publish, estimates` publishes the current estimation results as a model: a coefficient table with standard errors, test statistics, p-values, and confidence intervals, plus fit statistics. Framework Cloud and the offline reader show it like a model published from R or Python.
     sections:
@@ -349,7 +352,7 @@ entries:
           With `estimates`, the rule checks the file the data in memory came from: the last `fw_use` or `fw_save`, or `c(filename)` when a plain `use` or `save` has loaded another file since. Results fit to data from a path with "private" in it need the same confirmation.
     parameters:
       - name: filename
-        description: The file to publish. Leave it out with `estimates`.
+        description: The file, folder, or wildcard to publish. Leave it out with `estimates`.
       - name: estimates
         description: Publishes the current estimation results as a model.
       - name: slug(string)
@@ -382,7 +385,8 @@ entries:
       - `r(driver)`: `cloud`, `folder`, `github`, or `s3`
       - `r(backend)`: `core`, `cli`, or `python`
       - `r(slug)`: the artifact name
-      - `r(file)`: the file that was published; with `estimates`, the `saving()` copy, else empty
+      - `r(file)`: the file or folder that was published; with `estimates`, the `saving()` copy, else empty
+      - `r(files)`: the number of files published
 
       Every backend sets these results. A result is empty when the destination does not report it.
     examples:

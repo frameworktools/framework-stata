@@ -109,5 +109,21 @@ local rc = _rc
 capture fw_set fw_path clear
 t_end `rc'
 
+t_begin cli: a wildcard publishes the matching files through fw
+capture noisily {
+    mkdir `"`root'/outputs/set"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/outputs/set/a.png"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/outputs/set/b.png"'
+    t_write `"`root'/outputs/set/skip.txt"' "skip"
+    fw_publish "outputs/set/*.png", slug(set-pngs)
+    t_eq `"`r(backend)'"' "cli"
+    t_eq `"`r(slug)'"' "set-pngs"
+    confirm file `"`root'/site/set-pngs/artifact.json"'
+    confirm file `"`root'/site/set-pngs/a.png"'
+    capture confirm file `"`root'/site/set-pngs/skip.txt"'
+    assert _rc
+}
+t_end `=_rc'
+
 global FW_BACKEND
 quietly cd `"$FW_TEST_REPO"'

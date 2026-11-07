@@ -12,6 +12,9 @@
 {cmd:fw_publish} {it:filename} [{cmd:,} {it:options}]
 
 {p 8 16 2}
+{cmd:fw_publish} {it:folder} | {it:folder}{cmd:/}{it:pattern} [{cmd:,} {it:options}]
+
+{p 8 16 2}
 {cmd:fw_publish} {cmd:,} {opt est:imates} [{it:options} {opt l:evel(#)} {opt sav:ing(filename [, replace])}]
 
 {synoptset 26}{...}
@@ -34,6 +37,17 @@
 {cmd:fw_publish} publishes one file: a figure, a table, a rendered HTML
 document with its {it:name}{bf:_files} folder, or any other file. Each publish
 adds a version and keeps the earlier ones.
+
+{pstd}
+{cmd:fw_publish} {it:folder} publishes every file in a folder and its
+subfolders as one artifact, as {bf:publish_dir()} does in R and Python.
+{cmd:fw_publish outputs/figures/*.png} publishes the matching files in that
+folder, without subfolders. The files keep their paths inside the folder. The
+slug and title default to the folder's name, and the kind is {bf:html}. A
+folder without an {bf:index.html} gets one that links each file. On Framework
+Cloud the files go as one bundle that opens at {bf:index.html}, else at the
+first page at the top of the folder. Every file is checked by the
+private-path rule below.
 
 {pstd}
 {cmd:fw_publish, estimates} publishes the current estimation results as a
@@ -122,6 +136,8 @@ of the estimation command; after {cmd:regress, level(90)}, give {cmd:level(90)}.
 
 {phang2}{cmd:. graph export "$fw_outputs_figures/price.png", replace}{p_end}
 {phang2}{cmd:. fw_publish "$fw_outputs_figures/price.png", title("Price and mileage")}{p_end}
+{phang2}{cmd:. fw_publish "$fw_outputs_figures/meeting", title("Meeting figures")}{p_end}
+{phang2}{cmd:. fw_publish "$fw_outputs_figures/*.png", slug(all-figures)}{p_end}
 {phang2}{cmd:. regress price mpg weight}{p_end}
 {phang2}{cmd:. fw_publish, estimates slug(price-model) to(lab)}{p_end}
 
@@ -137,7 +153,8 @@ of the estimation command; after {cmd:regress, level(90)}, give {cmd:level(90)}.
 {p2col:{cmd:r(driver)}}cloud, folder, github, or s3{p_end}
 {p2col:{cmd:r(backend)}}core, cli, or python{p_end}
 {p2col:{cmd:r(slug)}}the artifact name{p_end}
-{p2col:{cmd:r(file)}}the published file; with {opt estimates}, the {opt saving()} copy, else empty{p_end}
+{p2col:{cmd:r(file)}}the published file or folder; with {opt estimates}, the {opt saving()} copy, else empty{p_end}
+{p2col:{cmd:r(files)}}the number of files published{p_end}
 {p2colreset}{...}
 
 {pstd}

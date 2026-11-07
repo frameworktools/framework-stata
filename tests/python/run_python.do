@@ -103,5 +103,18 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin python: a folder publishes as one artifact through framework-py
+capture noisily {
+    mkdir `"`root'/outputs/set"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/outputs/set/a.png"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/outputs/set/b.png"'
+    fw_publish "outputs/set", slug(py-set)
+    t_eq `"`r(backend)'"' "python"
+    t_eq `"`r(slug)'"' "py-set"
+    confirm file `"`root'/site/py-set/a.png"'
+    confirm file `"`root'/site/py-set/b.png"'
+}
+t_end `=_rc'
+
 global FW_BACKEND
 quietly cd `"$FW_TEST_REPO"'

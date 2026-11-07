@@ -154,6 +154,9 @@ build: every file with its checksum, an offline reader, and numbered versions.
 With a project token in `.env`, a folder publish also records the artifact's
 metadata in Framework Cloud. The files stay in the folder.
 
+`fw_publish` with a folder, or a wildcard such as `"$fw_outputs_figures/*.png"`,
+publishes the files as one artifact, as `publish_dir()` does in R and Python.
+
 A file whose full path contains "private" needs confirmation. Interactive Stata
 asks. Batch mode stops until you add the `includeprivate` option. The `private`
 option is short for `visibility(private)`.

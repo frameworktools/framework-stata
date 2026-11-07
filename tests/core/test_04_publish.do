@@ -251,4 +251,76 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin publish: a folder publishes as one artifact, as publish_dir() does
+capture noisily {
+    mkdir `"`root'/outputs/figures/set"'
+    mkdir `"`root'/outputs/figures/set/sub"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/outputs/figures/set/a.png"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/outputs/figures/set/b.png"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/outputs/figures/set/sub/c.png"'
+    t_write `"`root'/outputs/figures/set/notes.txt"' "notes"
+    fw_publish "outputs/figures/set", title("Figure set")
+    t_eq `"`r(slug)'"' "set"
+    t_eq `"`r(version)'"' "1"
+    assert r(files) == 4
+    t_eq `"`r(file)'"' `"`root'/outputs/figures/set"'
+    confirm file `"`root'/site/set/a.png"'
+    confirm file `"`root'/site/set/sub/c.png"'
+    confirm file `"`root'/site/set/v/1/sub/c.png"'
+    mata: A = fw_json_read(st_local("root") + "/site/set/artifact.json")
+    mata: assert(fw_get(A, "kind") == "html" & fw_get(A, "title") == "Figure set")
+    mata: assert(fw_get(A, "original") == "")
+    * Four files and the generated file list.
+    mata: assert(fw_get(A, "files.#") == "5")
+    mata: idx = fw_readfile(st_local("root") + "/site/set/index.html")
+    mata: assert(strpos(idx, `"<a href="sub/c.png">sub/c.png</a>"') > 0)
+}
+t_end `=_rc'
+
+t_begin publish: a wildcard publishes the matching files as one artifact
+capture noisily {
+    fw_publish "outputs/figures/set/*.png", slug(pngs)
+    t_eq `"`r(slug)'"' "pngs"
+    assert r(files) == 2
+    confirm file `"`root'/site/pngs/a.png"'
+    confirm file `"`root'/site/pngs/b.png"'
+    capture confirm file `"`root'/site/pngs/notes.txt"'
+    assert _rc
+    capture confirm file `"`root'/site/pngs/sub/c.png"'
+    assert _rc
+    capture noisily fw_publish "outputs/figures/set/*.pdf"
+    assert _rc == 601
+    * A folder with its own index.html keeps it.
+    t_write `"`root'/outputs/figures/set/index.html"' "<!doctype html><title>Set</title><img src=a.png>"
+    fw_publish "outputs/figures/set"
+    t_eq `"`r(version)'"' "2"
+    mata: assert(strpos(fw_readfile(st_local("root") + "/site/set/index.html"), "<title>Set</title>") > 0)
+}
+t_end `=_rc'
+
+t_begin publish: a folder with private files needs includeprivate
+capture noisily {
+    mkdir `"`root'/outputs/figures/mixed"'
+    mkdir `"`root'/outputs/figures/mixed/private"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/outputs/figures/mixed/ok.png"'
+    copy `"$FW_TEST_REPO/tests/fixtures/figure.png"' `"`root'/outputs/figures/mixed/private/p.png"'
+    t_log_begin
+    capture noisily fw_publish "outputs/figures/mixed"
+    local rc = _rc
+    t_log_end
+    assert `rc' == 198
+    t_log_has "1 file(s) to publish have 'private' in their path"
+    t_log_has "mixed/private/p.png"
+    capture confirm file `"`root'/site/mixed/index.html"'
+    assert _rc
+    * A wildcard of the public files passes; a wildcard in a private folder does not.
+    fw_publish "outputs/figures/mixed/*.png"
+    confirm file `"`root'/site/mixed/ok.png"'
+    capture fw_publish "outputs/figures/mixed/private/*.png", slug(p2)
+    assert _rc == 198
+    fw_publish "outputs/figures/mixed", includeprivate slug(mixed-all)
+    confirm file `"`root'/site/mixed-all/private/p.png"'
+}
+t_end `=_rc'
+
 quietly cd `"$FW_TEST_REPO"'

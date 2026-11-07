@@ -8,7 +8,7 @@ position: 3
 
 ## Files
 
-[fw_publish](ref:fw_publish) publishes one file at a time: a figure, a table, a rendered HTML document, or any other file. Each publish adds a version and keeps the earlier ones.
+[fw_publish](ref:fw_publish) publishes one file, or one folder, at a time: a figure, a table, a rendered HTML document, or any other file. Each publish adds a version and keeps the earlier ones.
 
 ```stata
 graph export "$fw_outputs_figures/price.png", replace
@@ -29,6 +29,17 @@ The kind comes from the extension. Images (`.png`, `.jpg`, `.svg`, `.gif`, `.web
 | `kind()` | Overrides the detected kind |
 
 For estimation results, see [Estimation results](guide:estimates).
+
+## Folders
+
+`fw_publish` with a folder publishes every file in it and its subfolders as one artifact, as `publish_dir()` does in R and Python. A wildcard publishes the matching files in one folder, without subfolders.
+
+```stata
+fw_publish "$fw_outputs_figures/meeting", title("Meeting figures")
+fw_publish "$fw_outputs_figures/*.png", slug(all-figures)
+```
+
+The files keep their paths inside the folder. The slug and title default to the folder's name, and the kind is `html`. A folder without an `index.html` gets one that links each file, as framework-py writes. On Framework Cloud the files go as one bundle that opens at `index.html`, else at the first page at the top of the folder. Every file is checked by the [private-path rule](#private-paths). `r(files)` gives the number of files.
 
 ## Destinations
 

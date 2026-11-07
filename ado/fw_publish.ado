@@ -8,7 +8,7 @@ program define fw_publish, rclass
     _fw_need_project
     gettoken file rest : file
     if `"`rest'"' != "" {
-        display as error "fw_publish takes one file at a time."
+        display as error "fw_publish takes one file or folder at a time. To publish several files as one artifact, give their folder or a wildcard such as outputs/figures/*.png."
         exit 198
     }
     if "`estimates'" != "" & `"`file'"' != "" {
@@ -37,6 +37,8 @@ program define fw_publish, rclass
         exit 198
     }
 
+    local fw_isdir 0
+    local fw_wild 0
     mata: fw__publish_scratch = fw_scratch()
     mata: st_local("scratch", fw__publish_scratch)
     capture noisily {
@@ -73,11 +75,14 @@ program define fw_publish, rclass
             if `"`title'"' == "" local title = cond("`dep'" != "", "`cmd': `dep'", "`cmd'")
         }
         else {
-            mata: st_local("file", fw_abs(st_local("file")))
-            capture confirm file `"`file'"'
-            if _rc {
-                display as error `"File not found: `file'"'
-                exit 601
+            * A folder or a wildcard publishes as one artifact, as publish_dir() does.
+            mata: fw_publish_select(st_local("file"))
+            if !`fw_isdir' {
+                capture confirm file `"`file'"'
+                if _rc {
+                    display as error `"File not found: `file'"'
+                    exit 601
+                }
             }
             local rfile `"`file'"'
         }
@@ -93,7 +98,7 @@ program define fw_publish, rclass
         }
         local include_private = ("`includeprivate'" != "")
         if !`include_private' {
-            mata: fw__flagged = fw_private_flagged(fw_publish_sources(st_local("file")) \ ///
+            mata: fw__flagged = fw_private_flagged(fw_publish_files(st_local("file"), `fw_isdir') \ ///
                 (st_local("datasrc") != "" ? fw_abs(st_local("datasrc")) : J(0, 1, "")))
             mata: st_local("nflag", strofreal(rows(fw__flagged)))
             if `nflag' {
@@ -138,37 +143,62 @@ program define fw_publish, rclass
                 exit 198
             }
             local bundle `"`scratch'/bundle"'
-            mata: fw__manifest = fw_bundle_build(st_local("file"), st_local("bundle"), st_local("slug"), ///
-                st_local("title"), st_local("description"), st_local("kind"), st_local("scratch"))
+            if `fw_isdir' {
+                mata: fw__manifest = fw_bundle_build_dir(fw__srcdir, fw__selected, st_local("bundle"), st_local("slug"), ///
+                    st_local("title"), st_local("description"), st_local("kind"), st_local("scratch"))
+            }
+            else {
+                mata: fw__manifest = fw_bundle_build(st_local("file"), st_local("bundle"), st_local("slug"), ///
+                    st_local("title"), st_local("description"), st_local("kind"), st_local("scratch"))
+            }
             mata: fw_folder_deliver(st_local("bundle"), st_local("fw_dest_path"), st_local("fw_dest_url"), st_local("fw_slug"))
             mata: fw_track_external(st_global("fw_root"), st_local("bundle"), fw__manifest, "folder", ///
                 st_local("visibility") != "" ? st_local("visibility") : st_local("fw_dest_visibility"))
         }
         else if "`fw_driver'" == "cloud" & "`backend'" == "core" {
+            if `fw_isdir' {
+                * Upload a copy of the selected files, with a file list when
+                * the folder has no page of its own.
+                mata: st_local("file", st_local("scratch") + "/stage/" + fw_basename(fw__srcdir))
+                mata: fw_stage_selected(fw__srcdir, fw__selected, st_local("file"))
+                mata: st_local("pages", strofreal(rows(dir(st_local("file"), "files", "*.htm*", 0))))
+                if `pages' == 0 mata: fw_dir_index(st_local("file"))
+            }
             mata: fw_cloud_publish(st_global("fw_root"), st_local("file"), st_local("slug"), st_local("title"), ///
                 st_local("description"), st_local("kind"), st_local("visibility"))
         }
-        else if "`backend'" == "cli" {
-            mata: st_local("fw_slug", fw_default_slug(st_local("file"), st_local("slug")))
-            local dest `"`to'"'
-            mata: fw_cli_publish(st_local("fwexe"), st_local("file"), st_local("dest"), st_local("slug"), ///
-                st_local("title"), st_local("description"), st_local("kind"), st_local("visibility"), ///
-                `include_private', st_global("fw_root"))
-        }
         else {
-            capture findfile fw_bridge.py
-            if _rc {
-                display as error "The framework package is incomplete: fw_bridge.py is missing. Reinstall the package."
-                exit 601
+            * fw and framework-py publish folders. A wildcard sends a copy of
+            * the matching files, and fw gets a file list when the folder has
+            * no index.html, as the folder driver writes. The files were
+            * checked above, and the copy sits in a temporary folder, so the
+            * backend need not ask again.
+            if `fw_isdir' & (`fw_wild' | "`backend'" == "cli") {
+                mata: st_local("file", st_local("scratch") + "/stage/" + fw_basename(fw__srcdir))
+                mata: fw_stage_selected(fw__srcdir, fw__selected, st_local("file"))
+                if "`backend'" == "cli" mata: fw_dir_index(st_local("file"))
             }
-            local bridge `"`r(fn)'"'
+            if `fw_isdir' local include_private 1
             mata: st_local("fw_slug", fw_default_slug(st_local("file"), st_local("slug")))
             local dest `"`to'"'
-            mata: fw_bridge_args(st_local("scratch") + "/args.json", st_local("file"), st_local("dest"), ///
-                st_local("slug"), st_local("title"), st_local("description"), st_local("kind"), ///
-                st_local("visibility"), `include_private')
-            python script `"`bridge'"', args(publish `"`scratch'/args.json"' `"`scratch'/result.json"')
-            mata: fw_bridge_result(st_local("scratch") + "/result.json")
+            if "`backend'" == "cli" {
+                mata: fw_cli_publish(st_local("fwexe"), st_local("file"), st_local("dest"), st_local("slug"), ///
+                    st_local("title"), st_local("description"), st_local("kind"), st_local("visibility"), ///
+                    `include_private', st_global("fw_root"))
+            }
+            else {
+                capture findfile fw_bridge.py
+                if _rc {
+                    display as error "The framework package is incomplete: fw_bridge.py is missing. Reinstall the package."
+                    exit 601
+                }
+                local bridge `"`r(fn)'"'
+                mata: fw_bridge_args(st_local("scratch") + "/args.json", st_local("file"), st_local("dest"), ///
+                    st_local("slug"), st_local("title"), st_local("description"), st_local("kind"), ///
+                    st_local("visibility"), `include_private')
+                python script `"`bridge'"', args(publish `"`scratch'/args.json"' `"`scratch'/result.json"')
+                mata: fw_bridge_result(st_local("scratch") + "/result.json")
+            }
         }
     }
     local rc = _rc
@@ -191,4 +221,7 @@ program define fw_publish, rclass
     return local backend `"`backend'"'
     return local slug `"`fw_slug'"'
     return local file `"`rfile'"'
+    local nfiles 1
+    if `fw_isdir' mata: st_local("nfiles", strofreal(rows(fw__selected)))
+    return scalar files = `nfiles'
 end
