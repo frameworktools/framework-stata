@@ -1016,12 +1016,15 @@ void fw_project_load(string scalar start, real scalar quiet)
         st_global(g, d[i, 2])
         names = names, d[i, 1]
     }
-    // Short aliases.
+    // Short aliases. fw_data is the data folder, else inputs_final, else
+    // inputs_public_final, when the settings define one. It need not exist yet.
     if (!anyof(names, "data")) {
         for (i = 1; i <= rows(d); i++) {
-            if (d[i, 1] == "inputs_final" | d[i, 1] == "inputs_public_final") {
-                st_global("fw_data", d[i, 2])
-                break
+            if (d[i, 1] == "inputs_final") st_global("fw_data", d[i, 2])
+        }
+        if (st_global("fw_data") == "") {
+            for (i = 1; i <= rows(d); i++) {
+                if (d[i, 1] == "inputs_public_final") st_global("fw_data", d[i, 2])
             }
         }
     }

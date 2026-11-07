@@ -23,7 +23,8 @@ project folder:
 {p2colset 8 32 34 2}{...}
 {p2col:{cmd:$fw_root}}the project folder{p_end}
 {p2col:{cmd:$fw_}{it:key}}each folder in {bf:directories}, such as {cmd:$fw_inputs_raw}{p_end}
-{p2col:{cmd:$fw_data}}{bf:inputs/final}, when it exists{p_end}
+{p2col:{cmd:$fw_data}}the {bf:data} folder, else {bf:inputs_final}, else
+{bf:inputs_public_final}, when the settings define one, even before it exists{p_end}
 {p2col:{cmd:$fw_outputs}}{bf:outputs}, when it exists{p_end}
 {p2col:{cmd:$fw_project_name}}the project name{p_end}
 {p2colreset}{...}

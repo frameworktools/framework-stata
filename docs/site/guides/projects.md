@@ -36,7 +36,7 @@ Other commands run `fw_project` themselves when no project is loaded. Run it aga
 |--------|-------|
 | `$fw_root` | The project folder |
 | `$fw_inputs_raw` | `directories: inputs_raw`, and so on for every key |
-| `$fw_data` | The `inputs_final` folder, when the settings have one |
+| `$fw_data` | The `data` folder, else `inputs_final`, else `inputs_public_final`, when the settings have one, even before it exists |
 | `$fw_outputs` | The `outputs` folder, when it exists |
 | `$fw_project_name` | `project.name`, else the folder name |
 
