@@ -38,7 +38,7 @@ entries:
       - the Stata version and where the package is installed
       - the project at or above the current folder
       - curl, the SHA-256 tool, and the system keyring
-      - the Framework Cloud server and whether this computer is connected
+      - the Framework Cloud server and whether this computer is connected, and the project's server when it differs
       - `fw`, the command-line tool, and its version
       - Stata's Python and whether framework-py is installed in it
       - the backend setting

@@ -21,7 +21,8 @@ steps for anything missing:
 {phang2}o  the Stata version and where the package is installed;{p_end}
 {phang2}o  the project at or above the current folder;{p_end}
 {phang2}o  curl, the SHA-256 tool, and the system keyring;{p_end}
-{phang2}o  the Framework Cloud server and whether this computer is connected;{p_end}
+{phang2}o  the Framework Cloud server and whether this computer is connected, and the
+project's server when it differs;{p_end}
 {phang2}o  {bf:fw}, the command-line tool, and its version;{p_end}
 {phang2}o  Stata's Python and whether framework-py is installed in it;{p_end}
 {phang2}o  the backend setting.{p_end}

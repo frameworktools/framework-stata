@@ -56,6 +56,13 @@ program define fw_setup, rclass
         }
     }
     if `"`root'"' != "" {
+        * Project publishing and the ledger skip the login default, as in fw, R, and Python.
+        mata: st_local("pserver", fw_cloud_url(st_local("root")))
+        if `"`pserver'"' != `"`server'"' {
+            display as text "  project server  " as result `"`pserver'"'
+            display as text "  This project publishes there, not to your login server. It takes FW_CLOUD_URL"
+            display as text "  from the project's .env or the environment; fw project link writes the .env."
+        }
         mata: st_local("ptok", strofreal(fw_env("FW_PROJECT_TOKEN") != "" | fw_dotenv(st_local("root"), "FW_PROJECT_TOKEN") != ""))
         display as text "  project token   " as result cond(`ptok', "set", "not set") as text cond(`ptok', "", " (needed to publish this project to Cloud)")
     }

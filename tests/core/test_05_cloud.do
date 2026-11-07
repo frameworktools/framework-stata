@@ -95,6 +95,23 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin cloud: fw_setup names the project server when it differs from the login server
+capture noisily {
+    * fw_login saved its server in cloud.yml; user calls use it.
+    if `"`: environment FW_CLOUD_URL'"' == "" {
+        mata: assert(fw_cloud_url("") == "http://127.0.0.1:" + st_local("port"))
+    }
+    t_log_begin
+    fw_setup, nopython nonetwork url(http://localhost:`port')
+    t_log_end
+    t_log_has "project server  http://127.0.0.1:`port'"
+    t_log_begin
+    fw_setup, nopython nonetwork url(http://127.0.0.1:`port')
+    t_log_end
+    t_log_lacks "project server"
+}
+t_end `=_rc'
+
 t_begin cloud: fw_publish uploads to the project with its project token
 capture noisily {
     sysuse auto, clear

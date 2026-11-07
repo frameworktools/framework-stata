@@ -24,7 +24,9 @@ The code lasts as long as the server allows: 20 minutes on Framework Cloud. Pres
 fw_login, nobrowser
 ```
 
-`url()` connects to another server, such as a self-hosted one. The server is remembered in `cloud.yml` in the Framework configuration folder.
+`url()` connects to another server, such as a self-hosted one. The server is remembered in `cloud.yml` in the Framework configuration folder. `fw_login`, `fw_logout`, and `fw_setup` then use `FW_CLOUD_URL`, else the newer of the `cloud.yml` files that `fw` and R saved, else framework.pub.
+
+Project commands do not use the remembered server. `fw_publish` to Cloud and the integrity ledger use `FW_CLOUD_URL` from the project's `.env`, then the environment variable, then framework.pub, so a project token only goes to the server that issued it. `fw project link` writes the `.env`. `fw`, R, and Python follow the same rules.
 
 ```stata
 fw_login, url("https://cloud.example.org")

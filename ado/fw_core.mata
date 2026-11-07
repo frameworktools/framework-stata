@@ -1183,20 +1183,65 @@ void fw_conf_set(string scalar key, string scalar value)
     fw_writefile(file, out)
 }
 
-// The Framework Cloud server for project commands.
+// The R package's configuration folder, as tools::R_user_dir("framework",
+// "config") names it. FW_CONFIG_HOME, when set, is shared by every tool.
+string scalar fw_r_config_dir()
+{
+    if (fw_env("FW_CONFIG_HOME") != "") return(fw_config_dir())
+    base = fw_env("R_USER_CONFIG_DIR")
+    if (base == "") base = fw_env("XDG_CONFIG_HOME")
+    if (base == "") {
+        if (fw_windows()) {
+            base = fw_env("APPDATA")
+            if (base == "") base = fw_home() + "/AppData/Roaming"
+            base = base + "/R/config"
+        }
+        else if (c("os") == "MacOSX") base = fw_home() + "/Library/Preferences/org.R-project.R"
+        else base = fw_home() + "/.config"
+    }
+    return(fw_abs(base + "/R/framework"))
+}
+
+string scalar fw__cloud_yml_server(string scalar file)
+{
+    if (!fileexists(file)) return("")
+    C = fw_yaml_read(file)
+    return(fw_setting(C, "server"))
+}
+
+// The default server a login saved: the newer of fw's and R's cloud.yml,
+// fw's on a tie, as fw, R, and Python decide.
+string scalar fw_saved_server()
+{
+    fwf = fw_config_dir() + "/cloud.yml"
+    rf = fw_r_config_dir() + "/cloud.yml"
+    a = fw__cloud_yml_server(fwf)
+    if (rf == fwf) return(a)
+    b = fw__cloud_yml_server(rf)
+    if (a == "" | b == "") return(a != "" ? a : b)
+    d = fw_scratch()
+    if (fw_windows()) {
+        rc = fw_run("powershell -NoProfile -NonInteractive -Command " + fw_dq() +
+            "if ((Get-Item -LiteralPath '" + subinstr(rf, fw_sq(), fw_sq() + fw_sq()) + "').LastWriteTimeUtc -gt " +
+            "(Get-Item -LiteralPath '" + subinstr(fwf, fw_sq(), fw_sq() + fw_sq()) + "').LastWriteTimeUtc) { exit 0 } else { exit 1 }" + fw_dq(), d, 60)
+    }
+    else rc = fw_run("[ " + fw_shq(rf) + " -nt " + fw_shq(fwf) + " ]", d, 30)
+    fw_scratch_done(d)
+    return(rc == 0 ? b : a)
+}
+
+// The Framework Cloud server. Project calls (root given) use the project's
+// .env, then FW_CLOUD_URL, then framework.pub, and never the login default,
+// so a project token only goes to the server that issued it. User calls
+// (root "") use FW_CLOUD_URL, then the login default, then framework.pub.
+// fw, R, and Python resolve the server the same way.
 string scalar fw_cloud_url(string scalar root, | string scalar given)
 {
     if (args() > 1 & given != "") u = given
     else {
         u = (root != "" ? fw_dotenv(root, "FW_CLOUD_URL") : "")
         if (u == "") u = fw_env("FW_CLOUD_URL")
-        if (u == "" & root == "") {
-            file = fw_config_dir() + "/cloud.yml"
-            if (fileexists(file)) {
-                C = fw_yaml_read(file)
-                u = asarray(C, "server")
-            }
-        }
+        if (u == "" & root == "") u = fw_saved_server()
         if (u == "") u = "https://framework.pub"
     }
     while (fw_endswith(u, "/")) u = substr(u, 1, strlen(u) - 1)
