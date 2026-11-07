@@ -284,6 +284,14 @@ string scalar fw_local_time()
     return(strofreal(d, "%tdCCYY-NN-DD") + "T" + c("current_time"))
 }
 
+// The record name for a plain file path: its path from the project root with
+// forward slashes, as R's data_save() names it, or the full path outside it.
+string scalar fw_path_record(string scalar path, string scalar root)
+{
+    if (fw_in_root(path, root)) return(fw_relpath(path, root))
+    return(fw_norm(path))
+}
+
 // Check a dataset against its record. mode: strict, warn, off, or accept.
 // accept notes a change without a message; fw_integrity_accept records it.
 // Sets locals fw_sha (current digest or "") and fw_changed (0/1).

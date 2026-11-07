@@ -31,6 +31,12 @@ in the project settings, and off with the environment variable {bf:FW_LEDGER=off
 dataset by its path.
 
 {pstd}
+{cmd:fw_save} to a plain file path, such as {cmd:outputs/tables/summary.csv},
+records the file's checksum under its path from the project root, as R's
+{bf:data_save()} does. {helpb fw_use} does not check plain paths, as R's
+{bf:data_read()} does not.
+
+{pstd}
 {cmd:fw_save} never writes to the file of a catalog entry with
 {bf:locked: true}, whether you give its name or its path. Such entries are
 source data: read them with {helpb fw_use} and save the result under another
@@ -66,4 +72,9 @@ entries stay read-only.
 {title:Stored results}
 
 {pstd}
-The same as {helpb fw_use}.
+The same as {helpb fw_use}, and:
+
+{p2colset 8 24 26 2}{...}
+{p2col:{cmd:r(record)}}the name of the record: the dataset name, or the path
+from the project root for a plain file path{p_end}
+{p2colreset}{...}

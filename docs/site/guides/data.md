@@ -79,7 +79,7 @@ fw_use inputs.raw.cars, clear check(accept)
 
 ### Records
 
-Records live in `.framework/stata-integrity.tsv`, one row per name: the path, checksum, data signature, lock, size, and time. Plain file paths are not recorded. Use a catalog or dot name to track a file.
+Records live in `.framework/stata-integrity.tsv`, one row per name: the path, checksum, data signature, lock, size, and time. `fw_save` to a plain file path records the file under its path from the project root, such as `outputs/tables/summary.csv`, as R's `data_save()` does. `fw_use` does not check plain paths, as R's `data_read()` does not. Use a catalog or dot name to have reads checked.
 
 R and Python keep their records in `framework.db`, which Stata cannot read. Each language checks its own records.
 

@@ -83,7 +83,9 @@ fw_use inputs.final.analysis, clear
 `fw_use` compares both before and after loading. A changed locked dataset stops
 with error 459; an unlocked one warns. `fw_save` locks a dataset unless you add
 `unlocked`. A name first recorded by `fw_use` is locked only when the catalog
-marks it `locked: true`. Plain file paths are not recorded or checked. To accept
+marks it `locked: true`. `fw_save` to a plain file path records the file under
+its path from the project root, as R's `data_save()` does. `fw_use` does not
+check plain paths, as R's `data_read()` does not. To accept
 a change to a locked dataset, load it with `fw_use <name>, clear check(accept)`.
 It records the new checksum and keeps the file as it is.
 

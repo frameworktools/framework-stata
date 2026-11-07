@@ -304,4 +304,33 @@ capture erase `"`root'/settings.do"'
 fw_project, quietly
 t_end `rc'
 
+t_begin data: fw_save to a file path records its checksum, as R does
+capture noisily {
+    sysuse auto, clear
+    fw_save "outputs/tables/recorded.csv", replace
+    local sha `"`r(sha256)'"'
+    t_eq `"`r(record)'"' "outputs/tables/recorded.csv"
+    assert strlen(`"`sha'"') == 64
+    mata: R = fw_integrity_get(st_local("root"), "outputs/tables/recorded.csv")
+    mata: assert(R[2] == "outputs/tables/recorded.csv")
+    mata: assert(R[3] == st_local("sha"))
+    mata: assert(R[3] == fw_sha256_file(st_local("root") + "/outputs/tables/recorded.csv"))
+    * The same file saved from a subfolder gets the same record name.
+    quietly cd `"`root'/notebooks"'
+    keep in 1/5
+    fw_save "outputs/tables/recorded.csv", replace
+    t_eq `"`r(record)'"' "outputs/tables/recorded.csv"
+    quietly cd `"`root'"'
+    mata: R = fw_integrity_get(st_local("root"), "outputs/tables/recorded.csv")
+    mata: assert(R[3] != st_local("sha"))
+    * Plain paths are not checked on read, as in R.
+    sysuse auto, clear
+    export delimited using `"`root'/outputs/tables/recorded.csv"', replace
+    fw_use "outputs/tables/recorded.csv", clear
+    assert c(N) == 74
+}
+local rc = _rc
+quietly cd `"`root'"'
+t_end `rc'
+
 quietly cd `"$FW_TEST_REPO"'

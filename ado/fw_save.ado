@@ -31,6 +31,11 @@ program define fw_save, rclass
     }
 
     local fw_sha ""
+    * A plain file path is recorded by its path from the project root, as R
+    * records data_save() to a path. fw_use does not check plain paths.
+    if "`fw_record'" == "" {
+        mata: st_local("fw_record", fw_path_record(st_local("fw_path"), st_local("fw_root")))
+    }
     if "`fw_record'" != "" {
         mata: fw_integrity_record(st_local("fw_root"), st_local("fw_record"), st_local("fw_path"), "", st_local("sig"), `locked')
         mata: st_local("live", strofreal(fw_ledger_live()))
@@ -46,10 +51,11 @@ program define fw_save, rclass
     local short = substr("`fw_sha'", 1, 12)
     if "`short'" != "" local short " (SHA-256 `short'…)"
     display as text `"Saved {res}`name'{txt} to `rel'`short'"'
-    if "`fw_record'" != "" & "`fw_sha'" == "" {
+    if "`fw_sha'" == "" {
         display as text "No SHA-256 tool was found. Framework recorded the datasignature only. Run fw_setup for details."
     }
     return local name `"`name'"'
+    return local record `"`fw_record'"'
     return local path `"`fw_path'"'
     return local type `"`fw_type'"'
     return local sha256 `"`fw_sha'"'
