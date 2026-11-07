@@ -9,7 +9,7 @@
 {title:Syntax}
 
 {p 8 16 2}
-{cmd:fw_save} {it:name} [{cmd:,} {opt replace} {opt unlocked} {opt opt:ions(string)}]
+{cmd:fw_save} {it:name} [{cmd:,} {opt replace} {opt unlocked} {opt out:side} {opt opt:ions(string)}]
 
 
 {title:Description}
@@ -30,6 +30,14 @@ in the project settings, and off with the environment variable {bf:FW_LEDGER=off
 {cmd:fw_save} does not edit the YAML data catalog. R and Python find the
 dataset by its path.
 
+{pstd}
+{cmd:fw_save} never writes to the file of a catalog entry with
+{bf:locked: true}, whether you give its name or its path. Such entries are
+source data: read them with {helpb fw_use} and save the result under another
+name. It also stops for a file outside the project folder, such as one in a
+folder that a {bf:settings.do} global puts above the project, unless you add
+{opt outside}.
+
 
 {title:Options}
 
@@ -39,6 +47,10 @@ dataset by its path.
 {phang}
 {opt unlocked} lets the dataset change. {cmd:fw_use} then warns rather than
 stops when the file differs from its record.
+
+{phang}
+{opt outside} allows a file outside the project folder. Locked catalog
+entries stay read-only.
 
 {phang}
 {opt options(string)} passes options to {cmd:save}, {cmd:export delimited}, or

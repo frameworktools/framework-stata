@@ -152,13 +152,15 @@ entries:
     kind: command
     category: data
     summary: Save a named dataset and record its integrity
-    usage: fw_save name [, replace unlocked options(string)]
+    usage: fw_save name [, replace unlocked outside options(string)]
     description: |
       `fw_save` saves the data in memory under a name, then records the file's SHA-256 checksum and Stata's `datasignature`. Names resolve as in `fw_use`. `fw_save inputs.final.analysis` writes `$fw_inputs_final/analysis.dta` and creates the folder when needed. A relative path uses the current folder when the file or its folder is there, else the project root.
     details: |
       When the project's integrity ledger is on, `fw_save` also sends the checksum, the file size, and this computer's name to Framework Cloud. The data itself is never uploaded. Turn the ledger on with `options: cloud_ledger: live` in the project settings, and off for a session with the environment variable `FW_LEDGER=off`.
 
       `fw_save` does not edit the YAML data catalog. R and Python find the dataset by its path.
+
+      `fw_save` never writes to the file of a catalog entry with `locked: true`, whether you give its name or its path, and stops with error 608. Such entries are source data: read them with `fw_use` and save the result under another name. It also stops for a file outside the project folder, such as one in a folder that a `settings.do` global puts above the project, unless you add `outside`.
     parameters:
       - name: name
         required: true
@@ -167,6 +169,8 @@ entries:
         description: Overwrites an existing file.
       - name: unlocked
         description: Lets the dataset change. `fw_use` then warns rather than stops when the file differs from its record.
+      - name: outside
+        description: Allows a file outside the project folder. Locked catalog entries stay read-only.
       - name: options(string)
         description: Options passed to `save`, `export delimited`, or `export excel`.
     returns: The same as `fw_use`.

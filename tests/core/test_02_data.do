@@ -258,4 +258,50 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin data: fw_save does not overwrite a locked catalog entry, by name or path
+capture noisily {
+    local file `"`root'/inputs/raw/survey.csv"'
+    mata: B0 = fw_readfile(st_local("file"))
+    sysuse auto, clear
+    t_log_begin
+    capture noisily fw_save inputs.raw.survey, replace
+    local rc1 = _rc
+    capture noisily fw_save "inputs/raw/survey.csv", replace
+    local rc2 = _rc
+    capture noisily fw_save `"`file'"', replace outside
+    local rc3 = _rc
+    t_log_end
+    assert `rc1' == 608 & `rc2' == 608 & `rc3' == 608
+    t_log_has "dataset: inputs.raw.survey (locked: true in the project settings)"
+    mata: assert(fw_readfile(st_local("file")) == B0)
+}
+t_end `=_rc'
+
+t_begin data: fw_save needs outside for a file outside the project
+capture noisily {
+    t_tmpdir
+    local away `"`r(dir)'"'
+    * A settings.do global outside the root is a folder dot names reach.
+    t_write `"`root'/settings.do"' `"global shared_away "`away'""'
+    fw_project, quietly
+    sysuse auto, clear
+    t_log_begin
+    capture noisily fw_save shared.away.cars
+    local rc1 = _rc
+    capture noisily fw_save `"`away'/cars.csv"'
+    local rc2 = _rc
+    t_log_end
+    assert `rc1' == 198 & `rc2' == 198
+    t_log_has "unless you add the outside option"
+    mata: assert(!fileexists(st_local("away") + "/cars.dta"))
+    fw_save shared.away.cars, outside
+    confirm file `"`away'/cars.dta"'
+    fw_save `"`away'/cars.csv"', outside
+    confirm file `"`away'/cars.csv"'
+}
+local rc = _rc
+capture erase `"`root'/settings.do"'
+fw_project, quietly
+t_end `rc'
+
 quietly cd `"$FW_TEST_REPO"'

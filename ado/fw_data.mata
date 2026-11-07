@@ -101,6 +101,65 @@ void fw_data_resolve(string scalar name_in, real scalar saving)
     st_local("fw_root", root)
 }
 
+// Paths compare without case where the file system ignores it.
+real scalar fw_samepath(string scalar a, string scalar b)
+{
+    if (fw_windows() | c("os") == "MacOSX") return(ustrlower(fw_norm(a)) == ustrlower(fw_norm(b)))
+    return(fw_norm(a) == fw_norm(b))
+}
+
+real scalar fw_in_root(string scalar path, string scalar root)
+{
+    p = fw_norm(path)
+    r = fw_norm(root)
+    if (fw_samepath(p, r)) return(1)
+    if (strlen(p) <= strlen(r)) return(0)
+    return(fw_samepath(substr(p, 1, strlen(r) + 1), r + "/"))
+}
+
+// The catalog name whose entry has locked: true and whose file is path, or "".
+string scalar fw_catalog_locked_at(transmorphic S, string scalar path)
+{
+    root = asarray(S, "__root")
+    keys = asarray_keys(S)
+    for (i = 1; i <= rows(keys); i++) {
+        k = keys[i]
+        if (!fw_startswith(k, "data.") | !fw_endswith(k, ".path")) continue
+        name = substr(k, 6, strlen(k) - 10)
+        if (name == "") continue
+        if (!anyof(("true", "yes", "on", "1"), strlower(fw_setting(S, "data." + name + ".locked")))) continue
+        v = fw_setting(S, k)
+        if (v == "") continue
+        if (fw_samepath(fw_abs(v, root), path)) return(name)
+    }
+    return("")
+}
+
+// fw_save's write rules. A catalog entry with locked: true is source data
+// that fw_save never overwrites, by name or by path; R and Python never
+// write through a catalog entry either. A file outside the project root,
+// such as one in a folder that a settings.do global puts above the root,
+// needs the outside option.
+void fw_save_guard(string scalar path, real scalar outside)
+{
+    S = fw_S()
+    root = asarray(S, "__root")
+    name = fw_catalog_locked_at(S, path)
+    if (name != "") {
+        fw_error("fw_save does not overwrite locked catalog data." + fw_nl() +
+            "  dataset: " + name + " (locked: true in the project settings)" + fw_nl() +
+            "  file:    " + path + fw_nl() +
+            "Save the data under another name, such as a dot name in a project folder." + fw_nl() +
+            "To replace the source file itself, set locked: false for " + name + " first.", 608)
+    }
+    if (!outside & !fw_in_root(path, root)) {
+        fw_error("fw_save writes inside the project unless you add the outside option." + fw_nl() +
+            "  file:    " + path + fw_nl() +
+            "  project: " + root + fw_nl() +
+            "Check the name or path. To write there on purpose, add the outside option.", 198)
+    }
+}
+
 // ---------------------------------------------------------------------------
 // SHA-256 through the tools that ship with each operating system
 // ---------------------------------------------------------------------------

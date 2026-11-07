@@ -2,10 +2,11 @@
 *! Part of the framework package
 program define fw_save, rclass
     version 14
-    syntax anything(name=name id="dataset name") [, REPLACE UNLOCKED OPTions(string asis)]
+    syntax anything(name=name id="dataset name") [, REPLACE UNLOCKED OUTside OPTions(string asis)]
     _fw_need_project
     gettoken name : name
     mata: fw_data_resolve(st_local("name"), 1)
+    mata: fw_save_guard(st_local("fw_path"), "`outside'" != "")
     capture confirm file `"`fw_path'"'
     if !_rc & "`replace'" == "" {
         display as error `"`fw_path' already exists. Add the replace option to overwrite it."'
