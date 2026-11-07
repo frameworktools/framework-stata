@@ -199,3 +199,16 @@ capture noisily {
     t_log_lacks "for_statax"
 }
 t_end `=_rc'
+
+t_begin settings: a long folder global keeps a space before its path
+capture noisily {
+    t_tmpdir
+    local s `"`r(dir)'"'
+    t_write `"`s'/settings.yml"' "directories:" "  inputs_private_intermediate: inputs/private/intermediate" "  inputs_raw: inputs/raw"
+    t_log_begin
+    fw_project, root(`"`s'"')
+    t_log_end
+    t_log_has "\$fw_inputs_private_intermediate inputs/private/intermediate"
+    t_log_lacks "intermediateinputs"
+}
+t_end `=_rc'

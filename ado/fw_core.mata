@@ -1039,7 +1039,9 @@ void fw_project_load(string scalar start, real scalar quiet)
             printf("{txt}Folders:\n")
             for (i = 1; i <= rows(d); i++) {
                 if (strlen("fw_" + d[i, 1]) > 32) continue
-                printf("{txt}  %s{col 34}{res}%s\n", char(36) + "fw_" + d[i, 1], fw_relpath(d[i, 2], root))
+                // A global that reaches column 34 gets one space before its path.
+                gname = char(36) + "fw_" + d[i, 1]
+                printf("{txt}  %s" + (strlen(gname) > 30 ? " " : "{col 34}") + "{res}%s\n", gname, fw_relpath(d[i, 2], root))
             }
             for (i = 1; i <= rows(d); i++) {
                 if (strlen("fw_" + d[i, 1]) <= 32) continue
