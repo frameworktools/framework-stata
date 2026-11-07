@@ -46,6 +46,13 @@ records the new checksum and data signature and keeps the lock. The file is
 not rewritten. {cmd:check(warn)} loads it once and keeps the old record.
 
 {pstd}
+The checksum covers the whole file, as in R and Python. A {bf:.dta} file holds
+the time it was saved, so saving the same data again with plain {cmd:save}
+changes the checksum, and a locked dataset then stops with error 459. Save
+with {helpb fw_save}, which records the new file, or accept the change with
+{cmd:check(accept)}.
+
+{pstd}
 The first read of a name records it. Reads of unlocked datasets update the
 record, as in R and Python. Records live in {bf:.framework/stata-integrity.tsv}.
 

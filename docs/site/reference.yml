@@ -114,6 +114,8 @@ entries:
     details: |
       Before loading, `fw_use` computes the file's SHA-256 checksum and compares it with the record from the last `fw_save` or `fw_use`. After loading, it compares Stata's `datasignature`. A dataset that changed stops with error 459 when it is locked, and loads with a warning when it is unlocked. To accept a change to a locked dataset, load it with `check(accept)`. It records the new checksum and data signature and keeps the lock. The file is not rewritten.
 
+      The checksum covers the whole file, as in R and Python. A `.dta` file holds the time it was saved, so saving the same data again with plain `save` changes the checksum, and a locked dataset then stops with error 459. Save with `fw_save`, which records the new file, or accept the change with `check(accept)`.
+
       The first read of a name records it. Reads of unlocked datasets update the record, as in R and Python. Records live in `.framework/stata-integrity.tsv`. Plain file paths are not recorded.
 
       SHA-256 comes from `sha256sum` or `shasum` on Linux and macOS and from PowerShell on Windows. Without one, only `datasignature` is checked. It covers values and variable names. It does not cover labels or notes.
