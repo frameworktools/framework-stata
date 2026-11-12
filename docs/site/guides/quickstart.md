@@ -17,6 +17,8 @@ fw_project
 
 Projects come from `fw new`, from R or Python, or from Framework Cloud. A folder with a `settings.yml` file is enough. See [Projects and settings](guide:projects).
 
+In a terminal, `fw new example-study --lang stata` asks where to create the project. It offers a folder named for the project in the current directory. Answer `n` to give another folder, or pass `--dir` to name it. Without a terminal, `fw new` needs `--dir`.
+
 This settings file names the folders and a local folder destination, so every step below works offline:
 
 ```yaml
