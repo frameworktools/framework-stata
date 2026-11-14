@@ -8,7 +8,7 @@ categories:
     title: Workflow
     description: Setup checks and project discovery
     position: 1
-    common: [fw_project, fw_setup]
+    common: [fw_scaffold, fw_project, fw_setup, fw_packages]
   - id: data
     title: Data
     description: Named datasets and integrity checks
@@ -104,6 +104,88 @@ entries:
           use "$fw_inputs_raw/survey.dta", clear
         runnable: false
     see_also: [fw_use, "guide:projects"]
+
+  - id: fw_scaffold
+    name: fw_scaffold
+    kind: command
+    category: workflow
+    summary: Load the project and prepare the Stata session
+    usage: fw_scaffold [, root(folder) noinstall quietly]
+    description: |
+      `fw_scaffold` does in Stata what `scaffold()` does in R and Python. Run it at the top of `master.do` or any do-file. In order, it:
+
+      1. loads the project with `fw_project`, which sets the path globals
+      2. points PLUS at `ado/plus` in the project, when `packages: project_ado` is on
+      3. installs the missing packages with `fw_packages`
+      4. sets the random seed
+      5. sets the graph scheme
+      6. adds the function folders to the ado-path, so programs there load by name
+      7. runs `scaffold.do` from the project folder, if there is one
+    details: |
+      The settings are R's, under `scaffold` in `settings.yml`:
+
+      | Setting | Effect |
+      |---------|--------|
+      | `seed_on_scaffold` | Sets the seed. Without it, the environment variable `FW_SEED` turns seeding on. `false` turns it off even then. |
+      | `seed` | The seed. Without it, `FW_SEED`, else 123. |
+      | `set_theme_on_scaffold` | Sets the graph scheme in `stata_scheme`. |
+      | `source_all_functions` | Adds `directories.functions`, else `functions`, to the ado-path. On unless `false`. |
+
+      A program in a function folder, such as `functions/clean_ids.ado`, runs by name in every do-file. After you edit one, type `discard` to load the new version.
+    parameters:
+      - name: root(folder)
+        description: Starts the project search in *folder*.
+      - name: noinstall
+        description: Skips installing missing packages.
+      - name: quietly
+        description: Prints only errors and the output of `scaffold.do`.
+    returns: |
+      - `r(root)`: the project folder
+      - `r(seed)`: the seed set, or empty
+      - `r(scheme)`: the graph scheme set, or empty
+      - `r(plus)`: the project's PLUS folder, when `project_ado` is on
+      - `r(functions)`: the folders added to the ado-path
+    examples:
+      - code: fw_scaffold
+        runnable: false
+    see_also: [fw_project, fw_packages, "guide:packages"]
+
+  - id: fw_packages
+    name: fw_packages
+    kind: command
+    category: workflow
+    summary: List and install the packages a project uses
+    usage: fw_packages [list|install|update] [names] [, quietly]
+    description: |
+      `fw_packages` reads the packages listed under `packages` in the project settings and shows whether each one is installed. `fw_packages install` installs the missing ones, and `fw_packages update` reinstalls every package. *names* limits the command to some of the packages.
+
+      | Source | Installs with |
+      |--------|---------------|
+      | `ssc` | `ssc install` *name*. The default source. |
+      | `github` | `net install` from `repo`, at `ref` when given |
+      | `net` | `net install` from the folder or web address in `url` |
+    details: |
+      A plain entry is shorthand: `- estout` is an SSC package, and `- sergiocorreia/reghdfe@6.12.3` is a GitHub package. Entries for R and Python, with source `cran`, `bioc`, or `pypi`, are listed as skipped.
+
+      With `project_ado: true`, packages install into `ado/plus` in the project folder. Commit the folder to keep the exact versions with the project. Without it, packages install into Stata's PLUS folder.
+
+      A package that fails to install does not stop the others. The command then stops with the first error.
+    parameters:
+      - name: quietly
+        description: Prints nothing but the output of `ssc` and `net`.
+    returns: |
+      - `r(packages)`: every package in the settings
+      - `r(installed)`: the installed packages
+      - `r(missing)`: the packages not installed
+      - `r(skipped)`: entries Stata cannot install
+      - `r(failed)`: packages that failed to install
+      - `r(plus)`: the folder checked and installed into
+    examples:
+      - code: |
+          fw_packages
+          fw_packages install
+        runnable: false
+    see_also: [fw_project, "guide:packages"]
 
   - id: fw_use
     name: fw_use

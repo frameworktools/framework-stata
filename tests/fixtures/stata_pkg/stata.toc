@@ -1,0 +1,3 @@
+v 3
+d Test packages for Framework for Stata
+p fwdemo A test command

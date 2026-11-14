@@ -9,7 +9,9 @@ catalog, and the same publishing destinations.
 | Command | Purpose |
 |---|---|
 | `fw_setup` | Check Stata, system tools, backends, and the Cloud connection |
+| `fw_scaffold` | Load the project and prepare the session, as `scaffold()` does in R and Python |
 | `fw_project` | Find the project and set path globals |
+| `fw_packages` | List and install the packages a project uses |
 | `fw_use` | Load a named dataset and check its integrity |
 | `fw_save` | Save a named dataset and record its integrity |
 | `fw_table` | Save the data in memory or a matrix as a table, with free-text headers |
@@ -98,6 +100,49 @@ do "settings.do"
 It lasts for the Stata session. Framework does not change it for you. A
 variable that is already float stays float; `recast double` it first. `fw_use`
 reads decimals in CSV files as double.
+
+## Packages
+
+`fw_packages` reads the packages a project lists under `packages` in its
+settings, the same section R writes to `settings/packages.yml`.
+`fw_packages install` installs the missing ones from SSC, GitHub, or a web
+address, and `fw_packages update` reinstalls them.
+
+```yaml
+packages:
+  project_ado: true
+  default_packages:
+    - estout
+    - sergiocorreia/reghdfe@6.12.3
+    - name: mytools
+      source: net
+      url: https://example.org/stata
+```
+
+With `project_ado: true`, packages install into `ado/plus` in the project
+folder. Commit it to keep the exact versions with the project.
+
+## Session setup
+
+`fw_scaffold` does in Stata what `scaffold()` does in R and Python. Put it at
+the top of `master.do`:
+
+```stata
+fw_scaffold
+```
+
+It loads the project, points PLUS at the project's `ado/plus` when
+`project_ado` is on, installs missing packages, sets the seed and graph
+scheme from `scaffold:` in `settings.yml`, adds the `functions` folder to the
+ado-path, and runs `scaffold.do` if the project has one.
+
+```yaml
+scaffold:
+  seed_on_scaffold: true
+  seed: 123
+  set_theme_on_scaffold: true
+  stata_scheme: s2color
+```
 
 ## Named datasets and integrity
 

@@ -10,7 +10,9 @@
 
 {synoptset 16}{...}
 {synopt:{helpb fw_setup}}check Stata, system tools, backends, and the Cloud connection{p_end}
+{synopt:{helpb fw_scaffold}}load the project and prepare the session{p_end}
 {synopt:{helpb fw_project}}find the project and set path globals{p_end}
+{synopt:{helpb fw_packages}}list and install the packages a project uses{p_end}
 {synopt:{helpb fw_use}}load a named dataset and check its integrity{p_end}
 {synopt:{helpb fw_save}}save a named dataset and record its integrity{p_end}
 {synopt:{helpb fw_table}}save a table with free-text headers to the tables folder{p_end}
