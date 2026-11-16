@@ -1,44 +1,46 @@
 ---
 id: support
 title: Support status
-description: Stata features, backend features, and untested areas
+description: Native Stata capabilities, backend-assisted drivers, limitations, and test coverage
 section: getting_started
 position: 3
 ---
 
-## Native support
+## Native Stata capabilities
 
-These run in Stata and Mata, with no Python:
+These features run directly in Stata and Mata without Python or `fw`:
 
-- Project discovery and folder globals from `settings.yml`, `config.yml`, split files, environments, `env()` values, `.env`, and `settings.do`.
-- Named datasets in `.dta`, `.csv`, `.tsv`, `.xlsx`, and `.xls`, by path, catalog name, or dot name.
-- Integrity checks with SHA-256 and `datasignature`, locked datasets, and the integrity ledger.
-- Publishing files to a folder, with the shared bundle format, versions, and an offline reader.
-- Publishing files and models to Framework Cloud with curl.
-- Models from `regress`, `logit`, `logistic`, `probit`, `poisson`, `nbreg`, `glm`, `mixed`, `stcox`, and `ivregress`, and a generic table for other commands.
-- Browser login to Framework Cloud, with the token in the system keyring.
+- Project discovery and directory globals from `settings.yml`, `config.yml`, split YAML files, configuration environments, `env()` references, `.env`, and `settings.do`.
+- Session initialization with `fw_scaffold` (project `ado/plus` isolation, missing package installation, random seed, graph scheme, function `ado` path, and `scaffold.do`) and package management with `fw_packages` (SSC, GitHub, and `net` sources).
+- Cataloged and dot-named datasets in `.dta`, `.csv`, `.tsv`, `.xlsx`, and `.xls`.
+- SHA-256 and `datasignature` integrity verification, dataset locking, and live Framework Cloud ledger updates.
+- Table and figure export (`fw_table` and `fw_graph`) with automatic output checksum tracking and sensitive-project directory routing.
+- Folder bundle publishing (`framework.bundle/v1`) with version history and the offline HTML reader.
+- Framework Cloud file, bundle, and model publishing via `curl`.
+- Structured estimation artifacts for `regress`, `logit`, `logistic`, `probit`, `poisson`, `nbreg`, `glm`, `mixed`, `stcox`, and `ivregress`, plus generic coefficient tables for other `e(b)`/`e(V)` estimators.
+- Browser-based device login to Framework Cloud with system keyring storage.
 
-## Backend support
+## Backend-assisted capabilities
 
-- Publishing to GitHub Pages
-- Publishing to S3
+- GitHub Pages publishing
+- S3-compatible object storage publishing
 
-Both need `fw` or framework-py. See [Backends](guide:backends).
+Both drivers require either `fw` or `framework-py`. See [Backends](guide:backends).
 
-## Unsupported features
+## Current limitations
 
-- **Shared integrity records.** Stata keeps its records in `.framework/stata-integrity.tsv`. R and Python keep theirs in `framework.db`, which Stata cannot read. Each language checks its own records.
-- **Full YAML.** Anchors, aliases, merge keys, and nested flow collections stop with an error.
-- **`!expr` settings.** These are R code and read as empty.
-- **Other data formats.** Stata reads and writes `.dta`, `.csv`, `.tsv`, `.xlsx`, and `.xls` only.
-- **Project login.** `fw_login` connects the computer. Cloud publishing still needs the project token in `.env`.
-- **Model mappings for other commands.** They get the generic coefficient table.
+- **Separate local integrity stores.** Stata writes checksums to `.framework/stata-integrity.tsv` and `.framework/stata-results.tsv`. R and Python write to SQLite (`framework.db`), which Stata does not read.
+- **YAML subset.** Anchors, aliases, merge keys, nested flow collections, and tab indentation stop with an error.
+- **R expressions.** Settings beginning with `!expr` evaluate to empty strings in Stata.
+- **Tabular file formats.** Native dataset commands read and write `.dta`, `.csv`, `.tsv`, `.xlsx`, and `.xls` only.
+- **Project token provisioning.** `fw_login` authenticates the workstation; Cloud publishing still reads `FW_PROJECT_TOKEN` from `.env`.
+- **Other estimators.** Commands outside the nine dedicated model mappers publish generic coefficient tables.
 
-## Untested areas
+## Test coverage notes
 
-The test suite passes on Linux with Stata 17, both from a checkout and after `net install`. These have not been run yet:
+The automated suite passes on Linux with Stata 17 from both a repository checkout and `net install`. Areas pending live hardware or service runs:
 
-- Windows and macOS, including the PowerShell scripts and the keyring on each system
-- Stata 14, 15, and 16. A static check keeps the core within Stata 14 syntax.
-- Publishing to GitHub Pages and S3 through either backend
-- Publishing and login against a live Framework Cloud server. The tests use a local mock server.
+- Native Windows PowerShell helpers and macOS/Windows keyring integration under live desktop sessions.
+- Runtime execution on Stata 14, 15, and 16 (`scripts/check_version14.py` enforces Stata 14 syntax statically).
+- End-to-end GitHub Pages and S3 uploads against live remote buckets and repositories.
+- Automated suite runs against production `framework.pub` (tests run against a local mock HTTP server).

@@ -1,49 +1,49 @@
 ---
 id: publishing
 title: Publishing
-description: Destinations, folder bundles, Framework Cloud, and private paths
+description: Destinations, folder bundles, Framework Cloud uploads, and private-path checks
 section: features
 position: 3
 ---
 
-## Files
+## File publishing
 
-[fw_publish](ref:fw_publish) publishes one file, or one folder, at a time: a figure, a table, a rendered HTML document, or any other file. Each publish adds a version and keeps the earlier ones.
+[fw_publish](ref:fw_publish) publishes a single file or directory as a versioned artifact: figures, tables, rendered HTML documents, or arbitrary data and archive files. Each publish appends a new version while preserving prior versions.
 
 ```stata
 graph export "$fw_outputs_figures/price.png", replace
 fw_publish "$fw_outputs_figures/price.png", title("Price and mileage")
 ```
 
-The kind comes from the extension. Images (`.png`, `.jpg`, `.svg`, `.gif`, `.webp`) are `image`. HTML is `html`, and its `name_files` folder goes with it. Anything else is `file`. Set it with `kind()`.
+Artifact kind is inferred from the file extension: `.png`, `.jpg`, `.svg`, `.gif`, and `.webp` map to `image`; `.html` maps to `html` and bundles any companion `<name>_files` directory; other extensions map to `file`. Override detection with `kind()`.
 
-| Option | Meaning |
-|--------|---------|
-| `slug()` | The artifact's name in its link. The default comes from the file name. |
-| `title()` | The title readers see |
-| `description()` | A short description |
-| `to()` | The destination |
+| Option | Effect |
+|---|---|
+| `slug()` | URL identifier for the artifact (defaults to the file stem) |
+| `title()` | Display title shown to readers |
+| `description()` | Short summary |
+| `to()` | Destination name or driver |
 | `visibility()` | `public`, `unlisted`, or `private` |
-| `private` | Short for `visibility(private)` |
-| `includeprivate` | Confirms files with "private" in their path |
-| `kind()` | Overrides the detected kind |
+| `private` | Shorthand for `visibility(private)` |
+| `includeprivate` | Confirms publishing from paths containing `private` |
+| `kind()` | Explicit artifact kind override |
 
-For estimation results, see [Estimation results](guide:estimates).
+For model publishing with `fw_publish, estimates`, see [Estimation results](guide:estimates).
 
-## Folders
+## Directory and wildcard bundles
 
-`fw_publish` with a folder publishes every file in it and its subfolders as one artifact, as `publish_dir()` does in R and Python. A wildcard publishes the matching files in one folder, without subfolders.
+Passing a directory path publishes every file inside that directory and its subdirectories as a single artifact, matching `publish_dir()` in R and Python. Passing a wildcard pattern such as `"$fw_outputs_figures/*.png"` bundles matching files in that directory without recursing into subdirectories.
 
 ```stata
 fw_publish "$fw_outputs_figures/meeting", title("Meeting figures")
 fw_publish "$fw_outputs_figures/*.png", slug(all-figures)
 ```
 
-The files keep their paths inside the folder. The slug and title default to the folder's name, and the kind is `html`. A folder without an `index.html` gets one that links each file, as framework-py writes. On Framework Cloud the files go as one bundle that opens at `index.html`, else at the first page at the top of the folder. Every file is checked by the [private-path rule](#private-paths). `r(files)` gives the number of files.
+Relative paths within the directory are preserved, `slug()` and `title()` default to the directory name, and the artifact kind defaults to `html`. If the directory has no `index.html`, Stata generates a directory listing page matching `framework-py`. On Framework Cloud, multi-file bundles open at `index.html` or the first top-level HTML page. Every bundled file is checked against the [private-path rule](#private-paths), and `r(files)` reports the file count.
 
 ## Destinations
 
-Without `to()`, `fw_publish` uses `publish.default` from the settings, then Framework Cloud. Named destinations live in the settings, as in R and Python.
+When `to()` is omitted, `fw_publish` uses `publish.default` from `settings.yml`, falling back to Framework Cloud. Named destinations live under `publish.destinations`:
 
 ```yaml
 default:
@@ -60,66 +60,67 @@ default:
 fw_publish "$fw_outputs_figures/price.png", to(lab)
 ```
 
-`to()` takes a destination name, or a driver: `cloud`, `folder`, `github`, or `s3`. A folder needs a path, so `to(folder)` alone stops with an error. Name a folder destination in the settings and use its name.
+`to()` accepts a configured destination name or a driver name (`cloud`, `folder`, `github`, or `s3`). Because folder destinations require a target path, bare `to(folder)` stops with an error; define a named destination in `settings.yml` instead.
 
-| Driver | Handled by |
-|--------|------------|
+| Driver | Handler |
+|---|---|
 | `folder` | Stata |
-| `cloud` | Stata, with curl |
-| `github` | `fw` or framework-py |
-| `s3` | `fw` or framework-py |
+| `cloud` | Stata (`curl`) |
+| `github` | `fw` or `framework-py` |
+| `s3` | `fw` or `framework-py` |
 
-GitHub Pages and S3 need a backend. See [Backends](guide:backends).
+GitHub Pages and S3 require a configured backend. See [Backends](guide:backends).
 
 ## Folder destinations
 
-A folder destination needs a `path`. It can be a shared drive or any folder. `fw_publish` writes the same `framework.bundle/v1` bundle that R and Python write:
+Folder destinations write the standard `framework.bundle/v1` structure to local disks or mounted network shares:
 
-- the file, with its SHA-256 checksum
+- Artifact files with SHA-256 checksums
 - `artifact.json` and `representation.json`
-- `index.html`, an offline reader that opens without a server
-- `v/1`, `v/2`, and so on, one folder per version
+- `index.html`, a self-contained offline reader
+- Versioned subdirectories (`v/1`, `v/2`, and subsequent versions)
 
-The folder's own `index.html` and `index.json` list every artifact in it. `visibility()` must match the destination's `visibility`. A destination without a `visibility` setting takes no `visibility()`.
+Top-level `index.html` and `index.json` files catalog every published artifact in the destination directory. If the destination specifies `visibility`, `visibility()` must match it; destinations without `visibility` reject per-call `visibility()` overrides.
 
-When the project has a Cloud project token, a folder publish also registers the artifact with Framework Cloud. Only the metadata and checksums are sent. The file stays in the folder.
+When `.env` includes `FW_PROJECT_TOKEN`, folder publishes also register artifact metadata and checksums with Framework Cloud while leaving all files on the local or mounted folder.
 
 ## Framework Cloud
 
-Publishing to Cloud uploads the file with curl. It uses the project token from `FW_PROJECT_TOKEN` in the project's `.env` file.
+Cloud uploads transfer files over HTTPS via `curl`, authenticating with `FW_PROJECT_TOKEN` in the project's `.env` file:
 
 ```sh
 FW_PROJECT_TOKEN=paste-the-project-token-here
 ```
 
-The token comes from the project's page in Framework Cloud. Keep `.env` out of git. The server is `FW_CLOUD_URL` in `.env` or the environment, else `https://framework.pub`.
+Issue project tokens from the project's **Computers & tokens** page in Framework Cloud, and keep `.env` excluded from Git. Stata resolves the server URL from `FW_CLOUD_URL` in `.env`, then the process environment, then the saved login server. With none set, publishing stops rather than use `https://framework.pub`.
 
-An HTML file and its `name_files` folder upload as one zip file.
+HTML files with a companion `<name>_files` directory upload as a single ZIP bundle.
 
-`visibility()` sets who can open the artifact. Without it, a new artifact is unlisted: anyone with the link can open it, but it is not listed. A later publish without `visibility()` keeps the current visibility. `slug()` names the artifact; it does not change the visibility.
+New Cloud artifacts default to `unlisted` visibility (accessible to anyone with the link and omitted from public indexes). Subsequent publishes without `visibility()` preserve the artifact's existing visibility. Setting `slug()` assigns the readable identifier without altering visibility.
 
 ## Private paths
 
-A file whose full path contains "private", in any case, needs confirmation. Interactive Stata asks. Batch mode stops with error 198 until you add the `includeprivate` option. The `private` option sets visibility, not this confirmation.
+Any file whose full path contains `private` (case-insensitive) requires explicit confirmation before publishing. Interactive Stata prompts for confirmation. Batch mode stops with error 198 unless `includeprivate` is passed. Note that `private` sets `visibility(private)` and does not bypass the path check.
 
 ```stata
 fw_publish "$fw_outputs_private/table.csv", to(lab) includeprivate
 ```
 
-R, Python, and `fw` follow the same rule. Nothing is uploaded without an explicit `fw_publish`.
+R, Python, and `fw` enforce the same check. Framework never uploads files without an explicit publish call.
 
 ## Stored results
 
-| Result | Value |
-|--------|-------|
-| `r(url)` | The published link, when the destination has one |
-| `r(location)` | The published folder, for folder destinations |
-| `r(version)` | The version number |
-| `r(version_url)` | The link to this version |
-| `r(destination)` | The destination name |
+| Macro / scalar | Description |
+|---|---|
+| `r(url)` | Published reader URL when supported by the destination |
+| `r(location)` | Output directory path for `folder` destinations |
+| `r(version)` | Published version number |
+| `r(version_url)` | Version-specific URL |
+| `r(destination)` | Destination name |
 | `r(driver)` | `cloud`, `folder`, `github`, or `s3` |
 | `r(backend)` | `core`, `cli`, or `python` |
-| `r(slug)` | The artifact name |
-| `r(file)` | The file that was published. With `estimates`, the `saving()` copy, else empty |
+| `r(slug)` | Stored artifact slug (trailing `.html` is stripped on Cloud) |
+| `r(file)` | Published path, or the `saving()` path for `estimates` |
+| `r(files)` | Number of files published |
 
-Every backend sets these results. `r(version)`, `r(version_url)`, and `r(location)` are empty when the destination does not report them: Cloud has no folder, and framework-py does not report a version for Cloud, GitHub, or S3. `r(slug)` is the name the destination stored. For Cloud, a `.html` ending in `slug()` is dropped.
+All backends populate this return set. Fields unsupported by a given driver or backend (such as `r(location)` on Cloud, or `r(version)` via `framework-py` on Cloud, GitHub Pages, and S3) return empty.

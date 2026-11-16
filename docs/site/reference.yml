@@ -6,27 +6,27 @@
 categories:
   - id: workflow
     title: Workflow
-    description: Setup checks and project discovery
+    description: Session initialization, project discovery, and package management
     position: 1
     common: [fw_scaffold, fw_project, fw_setup, fw_packages]
   - id: data
     title: Data
-    description: Named datasets and integrity checks
+    description: Cataloged datasets and SHA-256 integrity checks
     position: 2
     common: [fw_use, fw_save]
   - id: outputs
     title: Outputs
-    description: Tables and figures saved and recorded
+    description: Recorded tables and exported figures
     position: 3
     common: [fw_table, fw_graph]
   - id: publishing
     title: Publishing
-    description: Files and estimation results
+    description: File, bundle, and estimation artifacts
     position: 4
     common: [fw_publish]
   - id: cloud
     title: Cloud
-    description: Framework Cloud login and logout
+    description: Framework Cloud authentication
     position: 5
     common: [fw_login]
 
@@ -38,29 +38,29 @@ entries:
     summary: Check Stata, system tools, backends, and the Cloud connection
     usage: fw_setup [, nopython nonetwork url(string)]
     description: |
-      `fw_setup` checks everything Framework for Stata uses and prints the next step for anything missing:
+      `fw_setup` inspects the Stata environment and prints setup steps for missing dependencies:
 
-      - the Stata version and where the package is installed
-      - the project at or above the current folder
-      - curl, the SHA-256 tool, and the system keyring
-      - the Framework Cloud server and whether this computer is connected, and the project's server when it differs
-      - `fw`, the command-line tool, and its version
-      - Stata's Python and whether framework-py is installed in it
-      - the backend setting
+      - Stata version and installed package path
+      - Active project at or above the current working directory
+      - `curl`, SHA-256 utility, and operating system keyring
+      - Framework Cloud server URL, workstation login status, and any distinct project server URL
+      - `fw` CLI path and version
+      - Stata's configured Python interpreter and `framework-py` installation
+      - Active backend setting
 
-      When framework-py is missing from Stata's Python, `fw_setup` prints the `pip` command for that exact Python.
+      When `framework-py` is absent from Stata's Python, `fw_setup` prints the `pip` command for that interpreter.
     parameters:
       - name: nopython
-        description: Skips the Python check. Checking Python starts Stata's Python for the session, and Stata cannot change Python after that.
+        description: Skips the Python check. Probing Python initializes Stata's Python environment for the session and prevents subsequent `python set exec` changes.
       - name: nonetwork
-        description: Skips the request that confirms the Cloud login.
+        description: Skips the live server request that verifies the Cloud token.
       - name: url(string)
-        description: Checks a Framework Cloud server other than the default.
+        description: Checks a specific Framework Cloud server URL instead of the configured default.
     returns: |
-      `r(steps)`: the number of next steps printed.
+      `r(steps)`: count of recommended setup steps printed.
     examples:
       - code: fw_setup
-      - title: Without starting Python
+      - title: Skip Python initialization and network requests
         code: fw_setup, nopython nonetwork
     see_also: [fw_set, fw_login, "guide:installation"]
 
@@ -71,80 +71,80 @@ entries:
     summary: Find the project and set path globals
     usage: fw_project [, root(folder) quietly]
     description: |
-      `fw_project` walks up from the current folder, at most 10 levels, to the first folder with `.framework/`, `settings.yml`, `config.yml`, or `settings.do`. It reads the project settings and sets a global for each project folder.
+      `fw_project` searches upward from the current working directory (up to 10 parent levels) for the first directory containing `.framework/`, `settings.yml`, `config.yml`, or `settings.do`. It loads project settings and sets one global macro per configured directory.
 
       | Global | Value |
-      |--------|-------|
-      | `$fw_root` | The project folder |
-      | `$fw_`*key* | Each folder in `directories`, such as `$fw_inputs_raw` |
-      | `$fw_data` | The `data` folder, else `inputs_final`, else `inputs_public_final`, when the settings have one, even before it exists |
-      | `$fw_outputs` | The `outputs` folder, when it exists |
-      | `$fw_project_name` | The project name: `project_name`, the key R, Python, and `fw` write, else `project.name`, else the folder name |
+      |---|---|
+      | `$fw_root` | Project root directory |
+      | `$fw_`*key* | Configured path in `directories`, such as `$fw_inputs_raw` |
+      | `$fw_data` | `directories.data`, else `inputs_final`, else `inputs_public_final` when configured |
+      | `$fw_outputs` | `outputs` directory when present |
+      | `$fw_project_name` | `project_name`, else `project.name`, else `name`, else the root folder name |
     details: |
-      Paths are absolute and use forward slashes on every system. Globals from a previous project are cleared.
+      Paths are absolute and normalized with forward slashes on all platforms. Loading a project clears `$fw_*` globals from any prior project.
 
-      Settings come from `settings.yml`, with split files such as `settings/data.yml` and environment sections. The active environment is `FW_CONFIG_ACTIVE`, then `R_CONFIG_ACTIVE`, then `R_CONFIG_NAME`, then `default`. Projects that `fw` created for Stata keep their folders in `settings.do`; `fw_project` reads those too and leaves the globals of `settings.do`, such as `$inputs_raw`, untouched.
+      Settings load from `settings.yml`, merging split YAML files such as `settings/data.yml` and active environment overrides (`FW_CONFIG_ACTIVE`, else `R_CONFIG_ACTIVE`, else `R_CONFIG_NAME`, else `default`). Projects created with `fw` for Stata also define directory globals in `settings.do`. `fw_project` reads `settings.yml` first, appends any `settings.do` directories absent from `settings.yml`, and leaves plain `settings.do` globals such as `$inputs_raw` unchanged.
 
-      A project may have both files. `settings.do` holds folder globals for plain do-files; `settings.yml` holds what Stata shares with R, Python, and `fw`: `project_name`, `directories`, the data catalog, `publish` destinations, `security`, and `options`. `fw_project` reads `settings.yml` first and adds the folders of `settings.do` that it does not set, and every Framework command works from that merged view. When both set a folder to different paths, `settings.yml` wins, and `fw_project` prints a note.
+      When both files define different paths for the same directory key, `settings.yml` takes precedence and `fw_project` prints a notice.
 
-      Other commands run `fw_project` themselves when no project is loaded. Run it again after you change to another project.
+      Other Framework commands invoke `fw_project` automatically when no project is loaded. Run `fw_project` or `fw_scaffold` again after switching projects.
     parameters:
       - name: root(folder)
-        description: Starts the search in *folder* rather than the current folder.
+        description: Starts project discovery from *folder* instead of the current working directory.
       - name: quietly
-        description: Skips the summary.
+        description: Suppresses the project summary output.
     returns: |
-      - `r(root)`: the project folder
-      - `r(name)`: the project name
-      - `r(folders)`: the folder keys
-      - `r(conflicts)`: the folders that `settings.yml` and `settings.do` set differently
+      - `r(root)`: project root directory
+      - `r(name)`: project name
+      - `r(folders)`: space-separated directory keys
+      - `r(conflicts)`: directory keys where `settings.yml` and `settings.do` differed
     examples:
       - code: |
           fw_project
           use "$fw_inputs_raw/survey.dta", clear
         runnable: false
-    see_also: [fw_use, "guide:projects"]
+    see_also: [fw_scaffold, fw_use, "guide:projects"]
 
   - id: fw_scaffold
     name: fw_scaffold
     kind: command
     category: workflow
-    summary: Load the project and prepare the Stata session
+    summary: Load the project and initialize the Stata session
     usage: fw_scaffold [, root(folder) noinstall quietly]
     description: |
-      `fw_scaffold` does in Stata what `scaffold()` does in R and Python. Run it at the top of `master.do` or any do-file. In order, it:
+      `fw_scaffold` initializes the Stata session from project settings, matching `scaffold()` in R and Python. Place it at the top of `master.do` or individual scripts. In order, it:
 
-      1. loads the project with `fw_project`, which sets the path globals
-      2. points PLUS at `ado/plus` in the project, when `packages: project_ado` is on
-      3. installs the missing packages with `fw_packages`
-      4. sets the random seed
-      5. sets the graph scheme
-      6. adds the function folders to the ado-path, so programs there load by name
-      7. runs `scaffold.do` from the project folder, if there is one
+      1. Loads the project and sets directory globals via `fw_project`.
+      2. Sets Stata's `PLUS` directory to `ado/plus` inside the project when `packages.project_ado` is `true`.
+      3. Installs missing project packages via `fw_packages`.
+      4. Sets the random number seed.
+      5. Sets the graph scheme.
+      6. Prepends configured function directories to the ado-path so `.ado` programs load by name.
+      7. Runs `scaffold.do` in the project root when present.
     details: |
-      The settings are R's, under `scaffold` in `settings.yml`:
+      Session options read the `scaffold` section of `settings.yml`:
 
       | Setting | Effect |
-      |---------|--------|
-      | `seed_on_scaffold` | Sets the seed. Without it, the environment variable `FW_SEED` turns seeding on. `false` turns it off even then. |
-      | `seed` | The seed. Without it, `FW_SEED`, else 123. |
-      | `set_theme_on_scaffold` | Sets the graph scheme in `stata_scheme`. |
-      | `source_all_functions` | Adds `directories.functions`, else `functions`, to the ado-path. On unless `false`. |
+      |---|---|
+      | `seed_on_scaffold` | Enables random seeding. When omitted, setting `FW_SEED` in the environment enables seeding; `false` disables seeding even when `FW_SEED` is set. |
+      | `seed` | Integer seed value. Falls back to `FW_SEED`, then `123`. |
+      | `set_theme_on_scaffold` | Applies the graph scheme configured in `stata_scheme`. |
+      | `source_all_functions` | Adds `directories.functions` (default `functions`) to the ado-path unless set to `false`. |
 
-      A program in a function folder, such as `functions/clean_ids.ado`, runs by name in every do-file. After you edit one, type `discard` to load the new version.
+      Programs placed in the functions directory (such as `functions/clean_ids.ado`) are callable across all project scripts. Run `discard` after editing an `.ado` file to reload its definition.
     parameters:
       - name: root(folder)
-        description: Starts the project search in *folder*.
+        description: Starts project discovery in *folder*.
       - name: noinstall
         description: Skips installing missing packages.
       - name: quietly
-        description: Prints only errors and the output of `scaffold.do`.
+        description: Suppresses informational output while preserving errors and `scaffold.do` output.
     returns: |
-      - `r(root)`: the project folder
-      - `r(seed)`: the seed set, or empty
-      - `r(scheme)`: the graph scheme set, or empty
-      - `r(plus)`: the project's PLUS folder, when `project_ado` is on
-      - `r(functions)`: the folders added to the ado-path
+      - `r(root)`: project root directory
+      - `r(seed)`: applied seed value, or empty
+      - `r(scheme)`: applied graph scheme, or empty
+      - `r(plus)`: project `PLUS` directory when `project_ado` is enabled
+      - `r(functions)`: directories added to the ado-path
     examples:
       - code: fw_scaffold
         runnable: false
@@ -154,96 +154,96 @@ entries:
     name: fw_packages
     kind: command
     category: workflow
-    summary: List and install the packages a project uses
+    summary: List and install project packages
     usage: fw_packages [list|install|update] [names] [, quietly]
     description: |
-      `fw_packages` reads the packages listed under `packages` in the project settings and shows whether each one is installed. `fw_packages install` installs the missing ones, and `fw_packages update` reinstalls every package. *names* limits the command to some of the packages.
+      `fw_packages` inspects the `packages` section of `settings.yml` or `settings/packages.yml` and reports installation status. `fw_packages install` installs missing packages. `fw_packages update` reinstalls configured packages. Optional *names* restrict the operation to specific packages.
 
-      | Source | Installs with |
-      |--------|---------------|
-      | `ssc` | `ssc install` *name*. The default source. |
-      | `github` | `net install` from `repo`, at `ref` when given |
-      | `net` | `net install` from the folder or web address in `url` |
+      | Source | Installer |
+      |---|---|
+      | `ssc` | `ssc install` *name* (default source) |
+      | `github` | `net install` from `repo` at optional `ref` |
+      | `net` | `net install` from the directory or URL in `url` |
     details: |
-      A plain entry is shorthand: `- estout` is an SSC package, and `- sergiocorreia/reghdfe@6.12.3` is a GitHub package. Entries for R and Python, with source `cran`, `bioc`, or `pypi`, are listed as skipped.
+      String entries use shorthand syntax: `- estout` selects SSC, and `- sergiocorreia/reghdfe@6.12.3` selects GitHub at tag `6.12.3`. Entries with `cran`, `bioc`, or `pypi` sources belong to R or Python and are listed as skipped.
 
-      With `project_ado: true`, packages install into `ado/plus` in the project folder. Commit the folder to keep the exact versions with the project. Without it, packages install into Stata's PLUS folder.
+      When `project_ado: true` is set, packages install into `ado/plus` inside the project directory. Commit `ado/plus` to keep exact package versions with the repository. When `project_ado` is off, packages install into Stata's shared `PLUS` directory.
 
-      A package that fails to install does not stop the others. The command then stops with the first error.
+      If an installation fails, `fw_packages` finishes attempting remaining packages before exiting with the first error code.
     parameters:
       - name: quietly
-        description: Prints nothing but the output of `ssc` and `net`.
+        description: Suppresses status summaries while preserving `ssc` and `net` output.
     returns: |
-      - `r(packages)`: every package in the settings
-      - `r(installed)`: the installed packages
-      - `r(missing)`: the packages not installed
-      - `r(skipped)`: entries Stata cannot install
-      - `r(failed)`: packages that failed to install
-      - `r(plus)`: the folder checked and installed into
+      - `r(packages)`: all configured Stata package names
+      - `r(installed)`: installed packages
+      - `r(missing)`: uninstalled packages
+      - `r(skipped)`: non-Stata or invalid package entries
+      - `r(failed)`: packages whose installation failed
+      - `r(plus)`: target `PLUS` directory inspected or updated
     examples:
       - code: |
           fw_packages
           fw_packages install
         runnable: false
-    see_also: [fw_project, "guide:packages"]
+    see_also: [fw_scaffold, fw_project, "guide:packages"]
 
   - id: fw_use
     name: fw_use
     kind: command
     category: data
-    summary: Load a named dataset and check its integrity
+    summary: Load a named dataset and verify its integrity
     usage: fw_use name [, clear check(strict|warn|off|accept) na(strings) asfloat options(string)]
     description: |
-      `fw_use` loads a dataset by name. A *name* is resolved in this order:
+      `fw_use` loads a dataset resolved in three steps:
 
-      1. A file path, such as `inputs/raw/survey.csv`. A relative path is tried from the current folder, then from the project root.
-      2. An entry in the project's data catalog, such as `inputs.raw.survey`.
-      3. Dot notation: the longest leading part that names a project folder picks the folder, and the rest names the file. `inputs.final.analysis` is `$fw_inputs_final/analysis.dta`.
+      1. **File path** (containing a slash or file extension, such as `inputs/raw/survey.csv`), checked relative to the current directory first and then the project root.
+      2. **Data catalog key** under `data` in `settings.yml` or `settings/data.yml`, such as `inputs.raw.survey`.
+      3. **Dot notation**, where the longest prefix matching a configured directory selects the folder and the remainder names a `.dta` file (`inputs.final.analysis` resolves to `$fw_inputs_final/analysis.dta`).
 
-      The extension picks the reader: `.dta` uses `use`, `.csv` and `.tsv` use `import delimited`, and `.xlsx` and `.xls` use `import excel, firstrow`.
+      File extensions select the Stata reader: `.dta` calls `use`, `.csv` and `.tsv` call `import delimited`, and `.xlsx` and `.xls` call `import excel, firstrow`.
 
-      CSV and TSV files are read the way R's `data_read()` reads them: empty cells and `NA` are missing, a column of numbers and `NA` is numeric, and decimals are double. When import renames a column, such as one longer than 32 characters, `fw_use` lists the old and new names. A catalog entry's `stata_names` maps column names to Stata names.
+      Delimited files follow R's `data_read()` conventions: empty cells and `NA` import as missing values, columns containing numbers and `NA` become numeric, and decimal columns import as `double`. Renamed columns (such as headers over 32 characters) are reported in the output, and `stata_names` in the catalog maps long headers to chosen variable names.
     details: |
-      Before loading, `fw_use` computes the file's SHA-256 checksum and compares it with the record from the last `fw_save` or `fw_use`. After loading, it compares Stata's `datasignature`. A dataset that changed stops with error 459 when it is locked, and loads with a warning when it is unlocked. To accept a change to a locked dataset, load it with `check(accept)`. It records the new checksum and data signature and keeps the lock. The file is not rewritten.
+      Before loading a named dataset, `fw_use` verifies the file's SHA-256 checksum against `.framework/stata-integrity.tsv`. After loading, it verifies Stata's `datasignature`. Modified locked datasets stop with error 459; modified unlocked datasets warn and update the stored record. Pass `check(accept)` to record an intentional update to a locked dataset without rewriting the file.
 
-      The checksum covers the whole file, as in R and Python. A `.dta` file holds the time it was saved, so saving the same data again with plain `save` changes the checksum, and a locked dataset then stops with error 459. Save with `fw_save`, which records the new file, or accept the change with `check(accept)`.
+      Because `.dta` files embed a save timestamp, resaving identical data with plain `save` alters the file SHA-256 hash and triggers error 459 on locked datasets. Save updates with `fw_save` or accept external updates with `check(accept)`.
 
-      The first read of a name records it. Reads of unlocked datasets update the record, as in R and Python. Records live in `.framework/stata-integrity.tsv`. Plain file paths are not checked, as in R. `fw_save` records them under their path from the project root.
+      First-time reads of an unrecorded name create an unlocked integrity entry unless the catalog sets `locked: true`. Plain file paths skip integrity checks, matching R's `data_read()`.
 
-      SHA-256 comes from `sha256sum` or `shasum` on Linux and macOS and from PowerShell on Windows. Without one, only `datasignature` is checked. It covers values and variable names. It does not cover labels or notes.
+      SHA-256 hashes use `sha256sum` or `shasum` on Linux and macOS and PowerShell on Windows. When no SHA-256 tool is present, Stata verifies `datasignature` alone.
     parameters:
       - name: name
         required: true
-        description: A file path, a catalog name, or a dot name.
+        description: File path, catalog key, or dot-notation dataset name.
       - name: clear
-        description: Replaces the data in memory.
+        description: Replaces existing data in memory.
       - name: check(strict|warn|off|accept)
         default: strict
-        description: Sets the integrity check. `warn` loads a changed locked dataset with a warning and keeps the old record. `off` skips the check and the record. `accept` loads the dataset and records it as it is now, with the new SHA-256, data signature, and time. The lock stays as it was. The file is not rewritten. With the integrity ledger on, it sends the new checksum, as `fw_save` does. It needs a catalog or dot name.
+        description: Integrity verification mode. `warn` loads a modified locked dataset with a warning while keeping the previous checksum. `off` skips verification and recording. `accept` loads a catalog or dot-named dataset, updates the recorded SHA-256 hash and `datasignature` without rewriting the file, preserves lock state, and updates the live Cloud ledger when enabled.
       - name: na(strings)
         default: '"NA"'
-        description: Text that CSV and TSV files use for missing values. Empty cells are always missing. A number in the list, such as `na("NA" "-99")`, also applies to numeric columns. `na("")` keeps the text `NA`.
+        description: Missing-value tokens for CSV and TSV files (in addition to empty cells). Numeric tokens such as `na("NA" "-99")` apply to numeric columns as well. Pass `na("")` to keep literal `"NA"` strings.
       - name: asfloat
-        description: Reads decimals in CSV and TSV files as float, Stata's own default. Without it, they are read as double.
+        description: Imports CSV and TSV decimals as `float` instead of `double`.
       - name: options(string)
-        description: Options passed to `use`, `import delimited`, or `import excel`.
+        description: Native options forwarded to `use`, `import delimited`, or `import excel`.
     returns: |
-      - `r(name)`: the dataset name
-      - `r(path)`: the file
+      - `r(name)`: resolved dataset identifier
+      - `r(path)`: file path
       - `r(type)`: `dta`, `csv`, `tsv`, `xlsx`, or `xls`
-      - `r(sha256)`: the file checksum, when available
-      - `r(datasignature)`: the data signature
-      - `r(locked)`: 1 when the dataset is locked
-      - `r(accepted)`: 1 when `check(accept)` recorded the dataset again
-      - `r(renamed)`: the number of columns import renamed
-      - `r(na_columns)`: the number of columns where `na()` text became missing
+      - `r(sha256)`: file SHA-256 checksum when available
+      - `r(datasignature)`: Stata data signature
+      - `r(locked)`: `1` when locked, `0` otherwise
+      - `r(accepted)`: `1` when `check(accept)` updated the stored fingerprint
+      - `r(renamed)`: count of columns renamed during import
+      - `r(na_columns)`: count of columns where `na()` tokens converted to missing
     examples:
       - code: fw_use inputs.raw.survey, clear
         runnable: false
-      - title: A CSV file by path
+      - title: Load a CSV file by path
         code: fw_use "inputs/raw/visits.csv", clear options(varnames(1))
         runnable: false
-      - title: Accept a change to a locked dataset
+      - title: Accept an updated locked dataset
         code: fw_use inputs.raw.survey, clear check(accept)
         runnable: false
     see_also: [fw_save, "guide:data"]
@@ -253,38 +253,43 @@ entries:
     kind: command
     category: data
     summary: Save a named dataset and record its integrity
-    usage: fw_save name [, replace unlocked outside options(string)]
+    usage: fw_save name [, replace lock unlock outside options(string)]
     description: |
-      `fw_save` saves the data in memory under a name, then records the file's SHA-256 checksum and Stata's `datasignature`. Names resolve as in `fw_use`. `fw_save inputs.final.analysis` writes `$fw_inputs_final/analysis.dta` and creates the folder when needed. A relative path uses the current folder when the file or its folder is there, else the project root.
+      `fw_save` writes the dataset in memory and records its SHA-256 checksum and Stata `datasignature` in `.framework/stata-integrity.tsv`. Names resolve with the same rules as `fw_use`. For example, `fw_save inputs.final.analysis` writes `$fw_inputs_final/analysis.dta` and creates missing parent directories. Relative file paths resolve against the current directory when the file or parent folder exists there, and otherwise against the project root.
     details: |
-      When the project's integrity ledger is on, `fw_save` also sends the checksum, the file size, and this computer's name to Framework Cloud. The data itself is never uploaded. Turn the ledger on with `options: cloud_ledger: live` in the project settings, and off for a session with the environment variable `FW_LEDGER=off`.
+      When `options: cloud_ledger: live` is enabled in `settings.yml` (and `FW_LEDGER` is not `off`), `fw_save` sends the dataset name, SHA-256 hash, byte size, and computer hostname to Framework Cloud using `FW_PROJECT_TOKEN`. Observation data is never uploaded.
 
-      `fw_save` does not edit the YAML data catalog. R and Python find the dataset by its path.
+      `fw_save` does not modify `settings.yml`. Plain file paths such as `outputs/tables/summary.csv` are recorded under their project-relative path (`r(record)`), matching R's `data_save()`.
 
-      `fw_save` to a plain file path, such as `outputs/tables/summary.csv`, records its checksum under its path from the project root, as R's `data_save()` does. `r(record)` gives the name. `fw_use` does not check plain paths.
+      Saved datasets are unlocked unless `lock` is passed, matching `data_save()` in R and Python.
 
-      `fw_save` never writes to the file of a catalog entry with `locked: true`, whether you give its name or its path, and stops with error 608. Such entries are source data: read them with `fw_use` and save the result under another name. It also stops for a file outside the project folder, such as one in a folder that a `settings.do` global puts above the project, unless you add `outside`.
+      `fw_save` does not change locked data (error 608), matching `data_save()` in R and Python. Locked data is a catalog entry marked `locked: true`, referenced by catalog key or file path, or a dataset `fw_save` saved with `lock`. Saving the same data again works and keeps the lock: the data's `datasignature` matches the integrity record, and the file still matches the record's SHA-256. New data stops before the file is written. Write derived data under a separate name, or pass `unlock` to replace locked data. Setting `locked: false` on a catalog entry also unlocks it. Paths resolving outside the project root also stop unless `outside` is passed.
     parameters:
       - name: name
         required: true
-        description: A file path, a catalog name, or a dot name.
+        description: File path, catalog key, or dot-notation dataset name.
       - name: replace
-        description: Overwrites an existing file.
-      - name: unlocked
-        description: Lets the dataset change. `fw_use` then warns rather than stops when the file differs from its record.
+        description: Overwrites an existing output file.
+      - name: lock
+        description: Records the dataset as locked, so future changes error rather than warn on `fw_use`, and later saves of new data need `unlock`.
+      - name: unlock
+        description: Replaces locked data. The new file is unlocked unless `lock` is also passed.
       - name: outside
-        description: Allows a file outside the project folder. Locked catalog entries stay read-only.
+        description: Permits writing outside the project root directory. Locked data still needs `unlock`.
       - name: options(string)
-        description: Options passed to `save`, `export delimited`, or `export excel`.
+        description: Native options forwarded to `save`, `export delimited`, or `export excel`.
     returns: |
-      The same as `fw_use`, and `r(record)`: the name of the record, the dataset name or the path from the project root.
+      `r(name)`, `r(path)`, `r(type)`, `r(sha256)`, `r(datasignature)`, and `r(locked)` as in `fw_use`, plus `r(record)` containing the recorded dataset key or project-relative path.
     examples:
       - code: |
           sysuse auto, clear
           fw_save inputs.raw.cars, replace
         runnable: false
-      - title: A dataset that may change
-        code: fw_save inputs.final.analysis, replace unlocked
+      - title: Save a locked dataset
+        code: fw_save inputs.final.analysis, replace lock
+        runnable: false
+      - title: Replace locked data on purpose
+        code: fw_save inputs.raw.cars, replace unlock
         runnable: false
     see_also: [fw_use, "guide:data"]
 
@@ -292,59 +297,59 @@ entries:
     name: fw_table
     kind: command
     category: outputs
-    summary: Save the data in memory or a matrix as a table
+    summary: Save data in memory or a matrix as a table
     usage: fw_table name [varlist] [if] [in] [, matrix(matname) headers(strings) varnames format(csv xlsx) public nolabel na(string) noreplace]
     description: |
-      `fw_table` saves the data in memory, or a matrix, as a table in the project's tables folder, as `save_table()` does in R and Python. Headers are free text, such as `All patients, n (%)`: each variable's label, or the words of `headers()`. The data in memory are not changed.
+      `fw_table` exports the dataset in memory or a Stata matrix to the project's tables directory, matching `save_table()` in R and Python. Column headers default to variable labels (falling back to variable names) or explicit strings supplied in `headers()`, such as `"All patients, n (%)"`. Data in memory remain unmodified.
 
-      *name* names the file without its extension. It may hold subfolders, such as `meeting/table-1`, which `fw_table` creates. A name that ends in `.csv` or `.xlsx` picks that format.
+      *name* specifies the output stem without extension and may include subdirectories such as `meeting/table-1`, which `fw_table` creates automatically. Appending `.csv` or `.xlsx` to *name* selects that output format.
     details: |
-      The folder is the project's `outputs_tables` folder, else `outputs/tables`. A project with `security: sensitive: true`, or with `outputs_private_tables` or `outputs_public_tables` folders, keeps private and public tables apart: tables go to the private folder unless you add `public`. A public table made from data in a file with "private" in its path gets a warning.
+      Output files write to `directories.outputs_tables` (or `outputs/tables`). In privacy-sensitive projects (`security.sensitive: true` or split `outputs_private_tables` / `outputs_public_tables` directories), tables write to the private directory unless `public` is specified. Exporting a `public` table from data loaded out of a path containing `private` prints a warning.
 
-      Each file is recorded in `.framework/stata-results.tsv` by its path from the project root, with its type, whether it is public, its SHA-256 checksum, and the time. R and Python record the same fields in `framework.db`, which Stata cannot read.
+      Every exported file is logged in `.framework/stata-results.tsv` with its project-relative path, output type, public flag, SHA-256 hash, byte size, and timestamps.
 
-      CSV files follow R's `write_csv()`: missing numbers are `NA`, numbers have the fewest digits that read back as the same value, value labels are written as text, dates as `2026-11-07`, and fields are quoted only when needed. Excel files are written with `export excel`; their headers hold at most 80 characters.
+      CSV formatting matches R's `write_csv()`: missing numbers serialize as `NA`, floats use minimal exact decimal digits, value labels export as text unless `nolabel` is set, dates use ISO `YYYY-MM-DD`, and fields quote only when required. Excel files export via `export excel` (80-character header limit).
 
-      A matrix is written with its column names as headers. Row names that are not Stata's defaults (`r1`, `r2`, ...) become a first column with an empty header.
+      Matrix exports use column names as headers; custom row names other than default `r1`, `r2`, ... export in a leading column with an empty header.
     parameters:
       - name: name
         required: true
-        description: The file name without its extension, with any subfolders.
+        description: Output file stem (with optional subdirectories).
       - name: matrix(matname)
-        description: Saves a Stata matrix rather than the data in memory.
+        description: Exports a Stata matrix instead of the dataset in memory.
       - name: headers(strings)
-        description: One header for each column, in order. Quote headers with spaces.
+        description: Ordered column headers. Enclose multi-word headers in double quotes.
       - name: varnames
-        description: Uses variable names as headers, even for labeled variables.
+        description: Uses Stata variable names as headers instead of variable labels.
       - name: format(csv xlsx)
         default: csv
-        description: The file types. `format(csv xlsx)` writes both.
+        description: Output file formats. Specify `format(csv xlsx)` to write both.
       - name: public
-        description: Saves to the public tables folder of a project that splits private and public outputs.
+        description: Writes to the public tables directory in projects with private/public output separation.
       - name: nolabel
-        description: Writes the codes of labeled variables rather than their labels.
+        description: Exports underlying numeric codes instead of value labels.
       - name: na(string)
         default: NA
-        description: The text for missing numbers in CSV files.
+        description: Missing-value token for numeric columns in CSV output.
       - name: noreplace
-        description: Stops with error 602 when the file exists. By default `fw_table` overwrites it, as `save_table()` does.
+        description: Stops with error 602 if the target file exists instead of overwriting it.
     returns: |
-      - `r(path)`: the first file
-      - `r(paths)`: every file
-      - `r(sha256)`: the first file's checksum
-      - `r(format)`: the formats written
-      - `r(public)`: 1 with `public`
-      - `r(N)`, `r(k)`: the rows and columns written
+      - `r(path)`: first exported file path
+      - `r(paths)`: space-separated list of exported file paths
+      - `r(sha256)`: first file's SHA-256 checksum
+      - `r(format)`: exported formats
+      - `r(public)`: `1` when `public` was specified
+      - `r(N)`, `r(k)`: exported row and column counts
     examples:
       - code: |
           sysuse auto, clear
           label variable price "Price, US$"
           fw_table cars make price mpg
         runnable: false
-      - title: Free-text headers, a subfolder, and Excel
+      - title: Custom headers, subdirectory, and dual CSV/Excel output
         code: fw_table "meeting/table-1" group n pct, headers("Group" "Patients" "Share, %") format(csv xlsx)
         runnable: false
-      - title: A matrix
+      - title: Export a Stata matrix
         code: |
           tabstat price mpg, by(foreign) save
           matrix S = r(StatTotal)
@@ -356,50 +361,50 @@ entries:
     name: fw_graph
     kind: command
     category: outputs
-    summary: Export a graph to the figures folder and record it
+    summary: Export a graph to the figures folder and record its checksum
     usage: fw_graph name [, name(graphname) format(types) public dpi(#) width(#) height(#) options(string) noreplace]
     description: |
-      `fw_graph` exports a graph to the project's figures folder with `graph export`, as `save_figure()` does in R and Python, and records each file.
+      `fw_graph` exports a Stata graph to the project's figures directory via `graph export` and records each file's SHA-256 checksum, matching `save_figure()` in R and Python.
 
-      *name* names the file without its extension. It may hold subfolders, such as `meeting/figure-1`, which `fw_graph` creates. A name that ends in a file type, such as `figure-1.pdf`, picks that type.
+      *name* specifies the file stem without extension and may include subdirectories such as `meeting/figure-1`. Appending an extension such as `figure-1.pdf` selects that format.
     details: |
-      The folder is the project's `outputs_figures` folder, else `outputs/figures`. Sensitive projects keep private and public figures apart, as `fw_table` does for tables.
+      Output files write to `directories.outputs_figures` (or `outputs/figures`). Privacy-sensitive projects route figures to the private figures directory unless `public` is passed.
 
-      Each file is recorded in `.framework/stata-results.tsv`, as `fw_table` records tables.
+      Exported files are logged in `.framework/stata-results.tsv` alongside tables from `fw_table`.
 
-      File types are those `graph export` writes: `png`, `pdf`, `svg`, `eps`, `ps`, `tif`, `jpg`, `gif`, `emf`, and `wmf`. Stata for Unix writes no GIF, and EMF and WMF need Windows.
+      Supported formats match `graph export`: `png`, `pdf`, `svg`, `eps`, `ps`, `tif`, `jpg`, `gif`, `emf`, and `wmf` (`gif` is unavailable on Unix Stata, and `emf`/`wmf` require Windows).
     parameters:
       - name: name
         required: true
-        description: The file name without its extension, with any subfolders.
+        description: Output file stem (with optional subdirectories).
       - name: name(graphname)
-        description: Exports a named graph. `fw_graph` displays it first, so it becomes the current graph, because `graph export, name()` needs a graph window, which batch mode lacks.
+        description: Selects a named graph in memory, displaying it first so batch sessions without a GUI window can export it.
       - name: format(types)
         default: png
-        description: One or more file types, such as `format(png pdf)`.
+        description: One or more output extensions, such as `format(png pdf)`.
       - name: public
-        description: Saves to the public figures folder of a project that splits private and public outputs.
+        description: Writes to the public figures directory in projects with private/public output separation.
       - name: dpi(#)
         default: "300"
-        description: Raster files are the graph's width in inches times this many pixels, as `save_figure()` uses `dpi = 300`.
+        description: Raster resolution in pixels per inch (multiplied by the graph's width in inches).
       - name: width(#), height(#)
-        description: The raster size in pixels, in place of `dpi()`.
+        description: Explicit raster dimensions in pixels, overriding `dpi()`.
       - name: options(string)
-        description: More options for `graph export`.
+        description: Additional options forwarded to `graph export`.
       - name: noreplace
-        description: Stops with error 602 when the file exists. By default `fw_graph` overwrites it.
+        description: Stops with error 602 if the target file exists instead of overwriting it.
     returns: |
-      - `r(path)`: the first file
-      - `r(paths)`: every file
-      - `r(sha256)`: the first file's checksum
-      - `r(format)`: the formats written
-      - `r(public)`: 1 with `public`
+      - `r(path)`: first exported file path
+      - `r(paths)`: all exported file paths
+      - `r(sha256)`: first file's SHA-256 checksum
+      - `r(format)`: exported formats
+      - `r(public)`: `1` when `public` was specified
     examples:
       - code: |
           scatter mpg price
           fw_graph price-mpg
         runnable: false
-      - title: Two formats in a subfolder
+      - title: Export PNG and PDF to a public subdirectory
         code: fw_graph "meeting/figure-1", format(png pdf) public
         runnable: false
     see_also: [fw_table, fw_publish]
@@ -408,79 +413,79 @@ entries:
     name: fw_publish
     kind: command
     category: publishing
-    summary: Publish a figure, table, document, or estimation results
+    summary: Publish a figure, table, document, bundle, or estimation model
     usage: |
       fw_publish filename [, options]
       fw_publish folder | folder/pattern [, options]
       fw_publish, estimates [options level(#) saving(filename [, replace])]
     description: |
-      `fw_publish` publishes one file: a figure, a table, a rendered HTML document with its *name*`_files` folder, or any other file. Each publish adds a version and keeps the earlier ones.
+      `fw_publish` publishes a file, directory bundle, or estimation model as a versioned artifact. Each publish adds a new version while retaining earlier versions.
 
-      `fw_publish` with a folder publishes every file in it and its subfolders as one artifact, as `publish_dir()` does in R and Python. A wildcard such as `outputs/figures/*.png` publishes the matching files in that folder. The files keep their paths, the slug and title default to the folder's name, and a folder without an `index.html` gets one that links each file. Every file is checked by the private-path rule.
+      Passing a directory bundles every file inside that directory and its subdirectories as one artifact, matching `publish_dir()` in R and Python. Passing a wildcard such as `outputs/figures/*.png` bundles matching top-level files in that directory, generating an `index.html` listing when absent.
 
-      `fw_publish, estimates` publishes the current estimation results as a model: a coefficient table with standard errors, test statistics, p-values, and confidence intervals, plus fit statistics. Framework Cloud and the offline reader show it like a model published from R or Python.
+      Passing `estimates` serializes Stata's active estimation results into a structured model artifact containing coefficients, standard errors, test statistics, p-values, confidence intervals, and fit statistics.
     sections:
       - title: Destinations
         content: |
-          Without `to()`, `fw_publish` uses `publish.default` in the project settings, then Framework Cloud. Named destinations live in the settings under `publish.destinations`. A folder destination needs a `path`, so `to(folder)` alone stops with an error.
+          When `to()` is omitted, `fw_publish` uses `publish.default` from `settings.yml`, defaulting to Framework Cloud. Named destinations are configured under `publish.destinations`. Because folder destinations require a target directory, bare `to(folder)` raises an error.
 
-          Stata publishes to folders and to Framework Cloud itself. GitHub Pages and S3 need `fw` or framework-py; see `fw_set`. Framework Cloud uploads use the project token in the project's `.env` file.
+          Stata handles `folder` and `cloud` destinations natively. GitHub Pages (`github`) and S3 (`s3`) use the `fw` CLI or `framework-py` backend; see `fw_set`. Cloud uploads authenticate with `FW_PROJECT_TOKEN` in `.env`.
       - title: Estimation commands
         content: |
-          `regress`, `logit`, `logistic`, `probit`, `poisson`, `nbreg`, `glm`, `mixed`, `stcox`, and `ivregress` map to Framework's model types with the right family, link, and ratio label. Other commands with `e(b)` and `e(V)` publish a generic coefficient table.
+          `regress`, `logit`, `logistic`, `probit`, `poisson`, `nbreg`, `glm`, `mixed`, `stcox`, and `ivregress` map to typed Framework models with appropriate family, link, and ratio transformations. Other commands exposing `e(b)` and `e(V)` publish a generic coefficient table.
 
-          Estimates stay on the model scale. `_cons` becomes `(Intercept)`. Base and omitted factor levels are left out. `mixed` adds a random-effects table for independent, identity, exchangeable, and unstructured covariance. `nbreg` reports alpha or delta as a fit statistic. Other free parameters, such as tobit's `var(e.y)`, go in an ancillary table, without a test where Stata shows none.
+          Coefficients remain on the linear predictor scale, `_cons` maps to `(Intercept)`, and base or omitted factor levels are excluded. `mixed` includes random-effects variance and correlation tables (`independent`, `identity`, `exchangeable`, and `unstructured`). `nbreg` records `alpha` or `delta` in fit statistics, while auxiliary free parameters such as `tobit` variances and `ologit` cutpoints appear in an ancillary parameter table.
       - title: Private paths
         content: |
-          A file whose full path contains "private", in any case, needs confirmation. Interactive Stata asks. Batch mode stops with error 198 until you add the `includeprivate` option. R, Python, and `fw` follow the same rule. The `private` option sets visibility, not this confirmation.
+          Any input path containing `private` (case-insensitive) requires confirmation. Interactive sessions prompt; batch sessions stop with error 198 unless `includeprivate` is passed. Note that `private` sets `visibility(private)` rather than confirming private file paths.
 
-          With `estimates`, the rule checks the file the data in memory came from: the last `fw_use` or `fw_save`, or `c(filename)` when a plain `use` or `save` has loaded another file since. Results fit to data from a path with "private" in it need the same confirmation.
+          With `estimates`, Stata checks the source path of the dataset in memory (from the most recent `fw_use`, `fw_save`, or `c(filename)`) against the same rule.
     parameters:
       - name: filename
-        description: The file, folder, or wildcard to publish. Leave it out with `estimates`.
+        description: File, directory, or wildcard pattern to publish. Omit when passing `estimates`.
       - name: estimates
-        description: Publishes the current estimation results as a model.
+        description: Publishes active estimation results as a structured model artifact.
       - name: slug(string)
-        description: The artifact's name in its link. The default comes from the file name.
+        description: URL slug for the artifact (defaults to the file or directory stem).
       - name: title(string)
-        description: The title readers see.
+        description: Reader-facing display title.
       - name: description(string)
-        description: A short description.
+        description: Short artifact summary.
       - name: to(destination)
-        description: "`cloud`, `github`, `s3`, or a destination named in the project settings. A folder destination must be named, with a path."
+        description: "`cloud`, `github`, `s3`, or a named destination in `settings.yml`."
       - name: visibility(string)
-        description: "`public`, `unlisted`, or `private`. On Framework Cloud, a new artifact without it is unlisted, and a later publish without it keeps the current visibility."
+        description: "`public`, `unlisted`, or `private`. New Cloud artifacts default to `unlisted`; subsequent publishes without `visibility()` keep existing visibility."
       - name: private
-        description: Short for `visibility(private)`.
+        description: Shorthand for `visibility(private)`.
       - name: includeprivate
-        description: Confirms files with "private" in their path.
+        description: Confirms publishing files or estimation datasets from paths containing `private`.
       - name: kind(string)
-        description: Overrides the detected kind, such as `image` or `html`.
+        description: Overrides inferred artifact kind (`image`, `html`, or `file`).
       - name: level(#)
         default: c(level)
-        description: The confidence level, with `estimates`. The default is 95 unless changed with `set level`. The estimation command's own `level()` is not read.
+        description: Confidence level for `estimates` (defaults to `c(level)`, typically 95). Estimation command display flags are not inherited automatically.
       - name: saving(filename [, replace])
-        description: Keeps a copy of the model document, with `estimates`.
+        description: Writes a local copy of `model.json` when publishing `estimates`.
     returns: |
-      - `r(url)`: the published link, when the destination has one
-      - `r(location)`: the published folder, for folder destinations
-      - `r(version)`: the version number
-      - `r(version_url)`: the link to this version
-      - `r(destination)`: the destination name
+      - `r(url)`: published reader URL when supported
+      - `r(location)`: output directory for `folder` destinations
+      - `r(version)`: published version number
+      - `r(version_url)`: version-specific URL
+      - `r(destination)`: destination name
       - `r(driver)`: `cloud`, `folder`, `github`, or `s3`
       - `r(backend)`: `core`, `cli`, or `python`
-      - `r(slug)`: the artifact name
-      - `r(file)`: the file or folder that was published; with `estimates`, the `saving()` copy, else empty
-      - `r(files)`: the number of files published
+      - `r(slug)`: stored artifact slug
+      - `r(file)`: published path, or `saving()` path for `estimates`
+      - `r(files)`: number of bundled files
 
-      Every backend sets these results. A result is empty when the destination does not report it.
+      Every backend sets this schema; fields unsupported by a driver or backend return empty.
     examples:
-      - title: A figure
+      - title: Publish a figure
         code: |
           graph export "$fw_outputs_figures/price.png", replace
           fw_publish "$fw_outputs_figures/price.png", title("Price and mileage")
         runnable: false
-      - title: A model to a named destination
+      - title: Publish estimation results to a named destination
         code: |
           sysuse auto, clear
           regress price mpg weight
@@ -495,27 +500,27 @@ entries:
     summary: Connect this computer to Framework Cloud
     usage: fw_login [, url(string) nobrowser]
     description: |
-      `fw_login` connects this computer to Framework Cloud through the browser:
+      `fw_login` authenticates the workstation with Framework Cloud via device approval:
 
-      1. Stata shows a short code and opens the approval page.
-      2. You sign in, or create a free account, and approve the computer.
-      3. Stata stores the new token in the system keyring.
+      1. Stata prints a verification code and opens the browser approval page.
+      2. Sign in and approve the computer.
+      3. Stata saves the issued token in the operating system keyring.
 
-      R, Python, and `fw` use the same keyring entry, so one login serves them all. Without a keyring, the token goes in a private file in the Framework configuration folder. The token never appears in Stata's Results window, macros, or logs.
+      R, Python, and `fw` share the same keyring entry. When no system keyring is available, Stata stores the token in a mode-restricted file inside the Framework configuration directory. Tokens never appear in Stata's Results window, macros, or log files.
     details: |
-      Publishing a project to Cloud uses the project token in its `.env` file. `fw_login` connects only the computer. Publishing still needs a project token.
+      `fw_login` authenticates the workstation. Publishing project artifacts to Cloud uses `FW_PROJECT_TOKEN` in the project's `.env` file.
     parameters:
       - name: url(string)
-        description: Connects to a Framework Cloud server other than https://framework.pub, such as a self-hosted one.
+        description: Connects to a self-hosted Framework Cloud URL instead of `https://framework.pub`.
       - name: nobrowser
-        description: Prints the link without opening the browser. Batch mode never opens a browser.
+        description: Prints the approval URL without launching a browser (always active in batch mode).
     returns: |
-      - `r(account)`: the connected account's name
-      - `r(stored)`: where the token went, `keyring` or `file`
+      - `r(account)`: connected account name
+      - `r(stored)`: credential store used (`keyring` or `file`)
     examples:
       - code: fw_login
         runnable: false
-      - title: A self-hosted server
+      - title: Connect to a self-hosted server
         code: fw_login, url("https://cloud.example.org")
         runnable: false
     see_also: [fw_logout, fw_setup, "guide:cloud"]
@@ -527,10 +532,10 @@ entries:
     summary: Remove this computer's Framework Cloud token
     usage: fw_logout [, url(string)]
     description: |
-      `fw_logout` removes the token for a Framework Cloud server from the system keyring and from the token files Python and `fw` use. It first revokes the token on the server. When the server cannot be reached, it still removes the token here and says to revoke it on the server's tokens page. A token in `FW_CLOUD_TOKEN` is neither removed nor revoked. R keeps a separate token file; `fw_logout` names it when it exists.
+      `fw_logout` revokes the workstation token on Framework Cloud and removes it from the system keyring and shared token files read by Python and `fw`. If the server cannot be reached, `fw_logout` deletes local credentials and instructs you to revoke the token under **Account > Computers & API tokens**. Environment tokens in `FW_CLOUD_TOKEN` are left unchanged, and any separate R fallback token file is reported by path.
     parameters:
       - name: url(string)
-        description: The server to log out of. The default is the remembered server.
+        description: Server URL to sign out from (defaults to `FW_CLOUD_URL`, else the remembered Cloud server).
     examples:
       - code: fw_logout
         runnable: false
@@ -540,31 +545,31 @@ entries:
     name: fw_set
     kind: command
     category: workflow
-    summary: Set the backend and the location of fw
+    summary: Configure the publishing backend and fw binary path
     usage: |
       fw_set
       fw_set backend {auto|core|cli|python}
       fw_set fw_path {path|clear}
     description: |
-      `fw_set` with no arguments shows the options. Options are stored in `stata.conf` in the Framework configuration folder and apply to every project.
+      Running `fw_set` without arguments displays current settings. Preferences persist in `stata.conf` inside the Framework configuration directory across all projects.
 
       | Backend | Behavior |
-      |---------|----------|
-      | `auto` | Stata handles folders and Framework Cloud. GitHub and S3 use `fw` when it is installed, then framework-py. The default. |
-      | `core` | Stata only. GitHub and S3 publishing stop with an error. |
-      | `cli` | Every publish goes through `fw`. |
-      | `python` | Every publish goes through framework-py in Stata's Python. Stata 16 or newer. |
+      |---|---|
+      | `auto` | Native Stata for `folder` and `cloud`; tries `fw`, then `framework-py`, for `github` and `s3` (default) |
+      | `core` | Native Stata only; `github` and `s3` raise an error |
+      | `cli` | Routes all publishes through `fw` |
+      | `python` | Routes all publishes through `framework-py` in Stata's Python (Stata 16 or newer) |
     details: |
-      The global `FW_BACKEND` overrides the stored backend for one session: `global FW_BACKEND cli`.
+      Set `global FW_BACKEND cli` to override the saved backend for a single session.
 
-      `fw_set fw_path` points to `fw` when Stata cannot find it. The Stata application on macOS starts with a short PATH, so this is common there.
+      Use `fw_set fw_path` when Stata cannot locate `fw` on `PATH` (common in the macOS GUI application, which starts with a minimal system `PATH`).
     parameters:
       - name: backend
         description: "`auto`, `core`, `cli`, or `python`."
         default: auto
         env: FW_BACKEND
       - name: fw_path
-        description: The full path to `fw`, or `clear` to forget it.
+        description: Absolute path to the `fw` executable, or `clear` to reset.
     examples:
       - code: |
           fw_set backend cli

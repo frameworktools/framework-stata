@@ -1,7 +1,7 @@
 ---
 id: installation
 title: Installation
-description: Requirements, package installation, and setup check
+description: System requirements, package installation, and environment checks
 section: getting_started
 position: 1
 ---
@@ -9,27 +9,27 @@ position: 1
 ## Requirements
 
 - Stata 14 or newer.
-- curl, for Framework Cloud. It ships with macOS, Linux, and Windows 10 or later.
+- `curl` for Framework Cloud. It ships with macOS, Linux, and Windows 10 or later.
 
-Stata handles projects, named datasets, checksums, folder publishing, Cloud publishing, and Cloud login itself. Python is not needed.
+Stata handles project discovery, cataloged datasets, SHA-256 checksums, folder publishing, Cloud publishing, and Cloud login natively. Python is unnecessary for core commands.
 
-Two optional backends add GitHub Pages and S3 publishing. See [Backends](guide:backends).
+Optional backends add GitHub Pages and S3 publishing. See [Backends](guide:backends).
 
 ## Package installation
 
-Install from GitHub with `net install`.
+Install the package from GitHub with `net install`:
 
 ```stata
 net install framework, from("https://raw.githubusercontent.com/frameworktools/framework-stata/main") replace
 ```
 
-To install from a local copy of the repository, point `from()` at its folder.
+To install from a local repository clone, pass the directory path to `from()`:
 
 ```stata
 net install framework, from("/path/to/framework-stata") replace
 ```
 
-Run the same command again to update. `replace` overwrites the installed files.
+Run the same command to upgrade. The `replace` option overwrites installed package files.
 
 ## Setup check
 
@@ -37,9 +37,9 @@ Run the same command again to update. `replace` overwrites the installed files.
 fw_setup
 ```
 
-[fw_setup](ref:fw_setup) checks the Stata version, the project, curl, the SHA-256 tool, the system keyring, the Cloud connection, `fw`, and Stata's Python. It prints the exact next step for anything missing.
+[fw_setup](ref:fw_setup) checks the Stata version, active project, `curl`, SHA-256 utility, system keyring, Cloud connection, `fw` binary, and Stata's Python configuration. It prints setup instructions for any missing component.
 
-Checking Python starts Stata's Python for the session, and Stata cannot switch Python after that. Skip that check with `nopython`.
+Probing Python initializes Stata's Python environment for the remainder of the session, preventing subsequent `python set exec` changes. Pass `nopython` to skip the Python check:
 
 ```stata
 fw_setup, nopython
@@ -47,9 +47,10 @@ fw_setup, nopython
 
 ## Help files
 
-Every command has a help file.
+Every command includes a Stata help file:
 
 ```stata
 help framework
+help fw_scaffold
 help fw_publish
 ```

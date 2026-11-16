@@ -1,32 +1,34 @@
 ---
 id: cloud
 title: Framework Cloud
-description: Computer login, project tokens, and token storage
+description: Workstation login, keyring storage, logout, and project tokens
 section: features
 position: 5
 ---
 
-## Computer login
+## Workstation login
 
-[fw_login](ref:fw_login) connects this computer to Framework Cloud through the browser.
+[fw_login](ref:fw_login) authenticates your computer with Framework Cloud through the browser:
 
 ```stata
 fw_login
 ```
 
-1. Stata shows a short code and opens the approval page.
-2. Sign in, or create a free account, and approve the computer.
-3. Stata stores the new token and prints the account it connected.
+1. Stata prints a verification code and opens the approval URL.
+2. Sign in to Framework Cloud and approve the device.
+3. Stata stores the issued token and prints the connected account name.
 
-The code lasts as long as the server allows: 20 minutes on Framework Cloud. Press Break to stop waiting. Batch mode never opens a browser. Open the printed link yourself, or use `nobrowser` anywhere.
+Device codes remain valid for 20 minutes on `framework.pub`. Press Break to cancel polling. Batch sessions never launch a browser; open the printed URL manually, or pass `nobrowser` in interactive sessions:
 
 ```stata
 fw_login, nobrowser
 ```
 
-`url()` connects to another server, such as a self-hosted one. The server is remembered in `cloud.yml` in the Framework configuration folder. `fw_login`, `fw_logout`, and `fw_setup` then use `FW_CLOUD_URL`, else the newer of the `cloud.yml` files that `fw` and R saved, else framework.pub.
+Pass `url()` to connect to a self-hosted Framework Cloud server. Stata records the server URL in `cloud.yml` inside the Framework configuration directory. Account commands (`fw_logout` and `fw_setup`) check `url()`, then `FW_CLOUD_URL`, then the newer `cloud.yml` written by `fw` or R. `fw_login` checks the same, then names `https://framework.pub` in its notice before connecting.
 
-Project commands do not use the remembered server. `fw_publish` to Cloud and the integrity ledger use `FW_CLOUD_URL` from the project's `.env`, then the environment variable, then framework.pub, so a project token only goes to the server that issued it. `fw project link` writes the `.env`. `fw`, R, and Python follow the same rules.
+Cloud publishing and integrity ledger updates read `FW_CLOUD_URL` from the project's `.env` file first, then the process environment, then the saved login server. When `fw`'s and R's `cloud.yml` name different servers, they stop and ask for `FW_CLOUD_URL` in `.env` rather than guess. `fw project link` writes `.env` automatically.
+
+With nothing set, commands stop with an error. Stata never falls back to `https://framework.pub` except in `fw_login`.
 
 ```stata
 fw_login, url("https://cloud.example.org")
@@ -34,19 +36,19 @@ fw_login, url("https://cloud.example.org")
 
 ## Token storage
 
-The token goes in the system keyring when there is one:
+Stata stores account tokens in the operating system keyring whenever one is available:
 
-- **macOS:** the login keychain
-- **Linux:** the Secret Service, through `secret-tool`, when the service answers. `secret-tool` alone is not enough: many servers have it but run no Secret Service.
-- **Windows:** the Credential Manager
+- **macOS:** Login Keychain
+- **Linux:** Secret Service via `secret-tool` (verified with an active D-Bus session, since headless servers often install `secret-tool` without a running keyring daemon)
+- **Windows:** Credential Manager
 
-R, Python, and `fw` use the same keyring entry, so one login serves all of them. Without a keyring, the token goes in a private file in the Framework configuration folder: `FW_CONFIG_HOME`, else `$XDG_CONFIG_HOME/framework`, else `~/.config/framework`. Python and `fw` read that file too.
+R, Python, and `fw` share the same keyring entry, so signing in once authenticates all four tools. When no keyring is available, Stata writes a mode-restricted file inside the Framework configuration directory (`FW_CONFIG_HOME`, else `$XDG_CONFIG_HOME/framework`, else `~/.config/framework`), which `framework-py` and `fw` also read.
 
-The token never appears in Stata's Results window, macros, or logs. A small shell or PowerShell script reads it and hands it to curl in a private header file.
+Account tokens never enter Stata's Results window, macros, or log files. A shell or PowerShell helper reads the credential directly and passes it to `curl` through a temporary header file.
 
 ## Logout
 
-[fw_logout](ref:fw_logout) removes the token for a server from the keyring and from the token files Python and `fw` use. It first revokes the token on the server. When the server cannot be reached, it still removes the token here and says to revoke it on the server's tokens page. A token in `FW_CLOUD_TOKEN` is neither removed nor revoked. R keeps a separate token file, and `fw_logout` names it when it exists.
+[fw_logout](ref:fw_logout) revokes the server token and deletes it from the system keyring and shared token files. If the server is unreachable, `fw_logout` deletes the local credential and reminds you to revoke the token under **Account > Computers & API tokens**. Environment tokens in `FW_CLOUD_TOKEN` are left untouched. When R's separate fallback token file exists, `fw_logout` prints its path.
 
 ```stata
 fw_logout
@@ -54,8 +56,8 @@ fw_logout
 
 ## Project tokens
 
-`fw_login` connects only the computer. Publishing to Cloud and the integrity ledger use the project token, `FW_PROJECT_TOKEN`, in the project's `.env` file. With the ledger on and no project token, `fw_save` saves the data and says it skipped the push. See [Publishing](guide:publishing#framework-cloud).
+`fw_login` authenticates the computer rather than individual projects. Publishing artifacts to Cloud and pushing ledger hashes require `FW_PROJECT_TOKEN` in the project's `.env` file. If `cloud_ledger: live` is set without `FW_PROJECT_TOKEN`, `fw_save` writes the local dataset and notes that the Cloud ledger push was skipped. See [Publishing](guide:publishing#framework-cloud).
 
 ## Setup check
 
-[fw_setup](ref:fw_setup) reports the server, whether this computer is connected, and where the token is stored. `nonetwork` skips the request to the server.
+[fw_setup](ref:fw_setup) displays the active server URL, connection state, and credential storage backend. Pass `nonetwork` to skip live token verification against the server.

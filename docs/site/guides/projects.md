@@ -1,46 +1,64 @@
 ---
 id: projects
 title: Projects and settings
-description: Finding the project, folder globals, settings files, and environments
+description: Project discovery, session setup, folder globals, YAML settings, and environments
 section: features
 position: 1
 ---
 
 ## Project root
 
-[fw_project](ref:fw_project) walks up from the current folder, at most 10 levels. It stops at the first folder with one of these:
+[fw_project](ref:fw_project) searches upward from the current working directory up to 10 parent levels. It stops at the first directory containing any of these markers:
 
-- a `.framework/` folder
+- `.framework/`
 - `settings.yml`
 - `config.yml`
 - `settings.do`
 
 ```stata
-cd "~/projects/example-study/notebooks"
+cd "~/projects/example-study/do"
 fw_project
 ```
 
-Start the search somewhere else with `root()`.
+Pass `root()` to start discovery from an explicit path:
 
 ```stata
 fw_project, root("~/projects/example-study")
 ```
 
-Other commands run `fw_project` themselves when no project is loaded. Run it again after you change to another project.
+Other Framework commands call `fw_project` automatically when no project is loaded. Run `fw_project` or `fw_scaffold` again after switching projects in the same Stata session.
+
+## Session setup
+
+[fw_scaffold](ref:fw_scaffold) runs `fw_project` and applies session settings from `settings.yml`. Place it at the top of `master.do`:
+
+```stata
+fw_scaffold
+```
+
+In order, `fw_scaffold`:
+
+1. Loads project settings and sets directory globals via `fw_project`.
+2. Points Stata's `PLUS` directory to `ado/plus` inside the project when `packages.project_ado` is `true`.
+3. Installs missing project packages via [fw_packages](ref:fw_packages) unless `noinstall` is specified.
+4. Sets the random number seed when `scaffold.seed_on_scaffold` is `true`, or when `FW_SEED` is set and `seed_on_scaffold` is not `false`.
+5. Sets the graph scheme when `scaffold.set_theme_on_scaffold` is `true`.
+6. Adds `directories.functions` (or `functions/`) to the ado-path unless `scaffold.source_all_functions` is `false`.
+7. Runs `scaffold.do` in the project root when present.
 
 ## Folder globals
 
-`fw_project` sets one global for each folder in the `directories` section of the settings.
+`fw_project` defines one global macro for each entry in the `directories` mapping.
 
 | Global | Value |
-|--------|-------|
-| `$fw_root` | The project folder |
-| `$fw_inputs_raw` | `directories: inputs_raw`, and so on for every key |
-| `$fw_data` | The `data` folder, else `inputs_final`, else `inputs_public_final`, when the settings have one, even before it exists |
-| `$fw_outputs` | The `outputs` folder, when it exists |
-| `$fw_project_name` | `project_name`, the key R, Python, and `fw` write, else `project.name`, else the folder name |
+|---|---|
+| `$fw_root` | Project root path |
+| `$fw_inputs_raw` | Path for `directories.inputs_raw` (and matching `$fw_<key>` globals for every configured directory) |
+| `$fw_data` | `directories.data`, else `inputs_final`, else `inputs_public_final` when configured |
+| `$fw_outputs` | `outputs` directory when present |
+| `$fw_project_name` | `project_name`, else `project.name`, else `name`, else the root folder name |
 
-Paths are absolute and use forward slashes on every system. Globals from a previous project are cleared. A key whose global name would pass Stata's 32-character limit is skipped, and the summary says so.
+Paths are absolute and use forward slashes on all operating systems. Loading a project clears `$fw_*` globals from any previous project. Directory keys whose macro name would exceed Stata's 32-character limit are skipped with a notice.
 
 ```stata
 fw_project
@@ -50,7 +68,7 @@ graph export "$fw_outputs_figures/price.png", replace
 
 ## settings.yml
 
-Stata reads the same `settings.yml` as R, Python, and `fw`.
+Stata reads the same `settings.yml` file used by R, Python, and `fw`.
 
 ```yaml
 default:
@@ -62,23 +80,23 @@ default:
   data: settings/data.yml
 ```
 
-A value that names a `.yml` file, such as `data: settings/data.yml`, is read from that file. `config.yml` works the same way.
+String values ending in `.yml` (such as `data: settings/data.yml`) load and merge that split YAML file. `config.yml` follows the same rules.
 
-### Supported YAML
+### Supported YAML syntax
 
-Stata has its own YAML reader. It supports the YAML features that Framework settings use:
+Stata includes a native Mata YAML parser supporting the constructs used in Framework configuration files:
 
-- mappings, lists, and scalars
-- comments
-- quoted strings
-- flow lists and maps one level deep, such as `tags: [alpha, beta]`
-- literal (`|`) and folded (`>`) blocks
+- Block mappings, sequences, and scalars
+- Comments (`#`)
+- Single-quoted and double-quoted strings
+- Single-level flow sequences and mappings, such as `tags: [alpha, beta]`
+- Literal (`|`) and folded (`>`) block scalars
 
-Anchors, aliases, merge keys, and nested flow collections stop with an error. So does a tab in the indentation: YAML allows only spaces there.
+Anchors, aliases, merge keys, nested flow collections, and tab indentation raise an error.
 
-### Values from the environment
+### Environment variables in YAML
 
-A value written as `env("NAME", "default")` reads the environment variable, then the project's `.env` file, then the default. Values that start with `!expr` are R code and read as empty in Stata.
+Values written as `env("NAME", "default")` resolve from the process environment first, then the project's `.env` file, and finally the fallback string. Values starting with `!expr` contain R expressions and evaluate to empty strings in Stata.
 
 ```yaml
 default:
@@ -86,9 +104,9 @@ default:
     inputs_raw: env("SURVEY_DIR", "inputs/raw")
 ```
 
-## Environments
+## Configuration environments
 
-Top-level sections other than `default` are environments. The active environment's values replace the defaults. Stata picks the environment from these variables, in order:
+Top-level YAML keys other than `default` define named environments whose keys override `default`. Stata selects the active environment from the first set variable:
 
 1. `FW_CONFIG_ACTIVE`
 2. `R_CONFIG_ACTIVE`
@@ -104,11 +122,11 @@ staging:
     inputs_raw: inputs/raw-staging
 ```
 
-Set the variable before Stata starts, for example `FW_CONFIG_ACTIVE=staging stata`.
+Export the variable before starting Stata, such as `FW_CONFIG_ACTIVE=staging stata`.
 
 ## settings.do
 
-Projects that `fw new --lang stata` creates keep their folders in `settings.do`:
+Stata projects scaffolded with `fw new --lang stata` also include `settings.do`:
 
 ```stata
 global root `"`c(pwd)'"'
@@ -116,35 +134,33 @@ global inputs_raw `"$root/inputs/raw"'
 global outputs_figures `"$root/outputs/figures"'
 ```
 
-`fw_project` reads each `global` line whose path starts with `$root/` or `${root}/`, or is an absolute path, and sets `$fw_inputs_raw` and the rest. It skips other lines, such as paths built from other globals. It leaves the project's own globals, such as `$inputs_raw`, untouched.
+`fw_project` parses `global` assignments whose path begins with `$root/`, `${root}/`, or an absolute path, setting `$fw_inputs_raw` and matching `$fw_*` globals. Lines built from other macros are ignored, and user globals such as `$inputs_raw` remain unchanged.
 
-## settings.do and settings.yml together
+## Combined settings.yml and settings.do
 
-A Stata project can have both files. They divide the work:
+Projects can keep both files:
 
-| File | Holds | Read by |
-|------|-------|---------|
-| `settings.do` | Folder globals, such as `$inputs_raw` | Plain Stata do-files, without the package, and `fw_project` |
-| `settings.yml` | `project_name`, `directories`, the data catalog (`data`), `publish` destinations, `security`, and `options` | `fw_project` and every Framework command, R, Python, and `fw` |
+| File | Contents | Readers |
+|---|---|---|
+| `settings.do` | Directory globals such as `$inputs_raw` | Plain Stata scripts and `fw_project` |
+| `settings.yml` | `project_name`, `directories`, `packages`, `scaffold`, `data`, `publish`, `security`, and `options` | `fw_project`, all Framework Stata commands, R, Python, and `fw` |
 
-Stata reads YAML: `fw_project` reads `settings.yml` first and adds the folders of `settings.do` that `settings.yml` does not set. Every command then works from that one merged view: `fw_use` and `fw_save` take the catalog from it, `fw_table` and `fw_graph` the private and public split, and `fw_publish` the destinations.
+`fw_project` loads `settings.yml` first and appends any `settings.do` directories absent from `settings.yml`. All Framework commands operate on that merged configuration. When both files define different paths for the same directory key, `settings.yml` wins, `fw_project` prints a notice, and `r(conflicts)` lists the conflicting keys.
 
-When both files set the same folder to different paths, `settings.yml` wins. `fw_project` prints a note for each such folder and lists them in `r(conflicts)`. Keep the two in step, or set folders in one file only.
+## Numeric precision
 
-## Precision
+Stata creates new numeric variables as `float` unless configured otherwise. Commands such as `generate` and `collapse (mean)` on non-`double` variables retain roughly seven significant digits, whereas R and Python use double precision (`~1e-16`), producing differences around `1e-7`.
 
-Stata stores new variables as float unless told otherwise. `generate`, and `collapse (mean)` of a variable that is not double, keep about 7 significant digits. R and Python compute in double, so results can differ from theirs at about 1e-7. A port of an R project found a mean that matched R only to 1e-7 for this reason.
-
-To match R and Python, put `set type double` near the top of `master.do`:
+Set `double` as the session default near the top of `master.do` when matching R or Python outputs:
 
 ```stata
 version 14
 set type double
-do "settings.do"
+fw_scaffold
 ```
 
-It lasts for the Stata session. Framework does not change it for you. A variable that is already float stays float: `recast double` it first. `fw_use` reads decimals in CSV files as double.
+`set type double` lasts for the active Stata session. Existing `float` variables keep their storage type until converted with `recast double`. `fw_use` imports decimal values from CSV and TSV files as `double` by default.
 
 ## Stored results
 
-`fw_project` stores `r(root)`, `r(name)`, `r(folders)`, the list of folder keys, and `r(conflicts)`, the folders that `settings.yml` and `settings.do` set differently.
+`fw_project` stores `r(root)`, `r(name)`, `r(folders)` (space-separated directory keys), and `r(conflicts)` (directory keys where `settings.yml` and `settings.do` differed).

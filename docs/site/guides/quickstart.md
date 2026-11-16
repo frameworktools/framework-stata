@@ -1,25 +1,25 @@
 ---
 id: quickstart
 title: Quick start
-description: A project, a named dataset, a model, and a published result
+description: Project initialization, cataloged datasets, model publishing, and figures
 section: getting_started
 position: 2
 ---
 
-## Project
+## Project setup
 
-Start Stata in the project folder, or `cd` into it. [fw_project](ref:fw_project) finds the project and sets a global for each folder.
+Start Stata in a project directory or `cd` into one. [fw_scaffold](ref:fw_scaffold) loads the project, sets directory globals, configures project packages, and applies session settings. Use [fw_project](ref:fw_project) when you want path globals without running session setup.
 
 ```stata
 cd "~/projects/example-study"
-fw_project
+fw_scaffold
 ```
 
-Projects come from `fw new`, from R or Python, or from Framework Cloud. A folder with a `settings.yml` file is enough. See [Projects and settings](guide:projects).
+Create Stata projects from Framework Cloud or with `fw new` in a terminal. Any directory containing `settings.yml` also works as a project root. See [Projects and settings](guide:projects).
 
-In a terminal, `fw new example-study --lang stata` asks where to create the project. It offers a folder named for the project in the current directory. Answer `n` to give another folder, or pass `--dir` to name it. Without a terminal, `fw new` needs `--dir`.
+In an interactive terminal, `fw new example-study --lang stata` prompts for the target directory and defaults to `./example-study`. Enter `n` to choose another path, or pass `--dir` directly. Non-interactive runs require `--dir`.
 
-This settings file names the folders and a local folder destination, so every step below works offline:
+The `settings.yml` below configures input and figure directories alongside a local folder publishing destination so every step runs offline:
 
 ```yaml
 default:
@@ -37,7 +37,7 @@ default:
 
 ## Named datasets
 
-[fw_save](ref:fw_save) saves the data in memory under a name and records its checksum. [fw_use](ref:fw_use) loads it and checks that it has not changed.
+[fw_save](ref:fw_save) writes the dataset in memory under a catalog or dot name and records its checksum. [fw_use](ref:fw_use) loads the dataset and verifies that the file matches its recorded checksum.
 
 ```stata
 sysuse auto, clear
@@ -45,31 +45,29 @@ fw_save inputs.raw.cars, replace
 fw_use inputs.raw.cars, clear
 ```
 
-`inputs.raw.cars` is `$fw_inputs_raw/cars.dta`. See [Data and integrity](guide:data).
+`inputs.raw.cars` resolves to `$fw_inputs_raw/cars.dta`. See [Data and integrity](guide:data).
 
-## Model
+## Estimation results
 
 ```stata
 regress price mpg weight
 fw_publish, estimates title("Price model")
 ```
 
-[fw_publish](ref:fw_publish) turns the estimation results into a model that Framework Cloud and the offline reader display. Here it goes to the `local` folder destination: open `published/index.html` to see it. See [Estimation results](guide:estimates).
+[fw_publish](ref:fw_publish) serializes the active estimation results into a model artifact rendered by Framework Cloud and the offline reader. With the `local` destination above, open `published/index.html` to view the published model. See [Estimation results](guide:estimates).
 
-## Figure
+## Figures
 
-`graph export` does not create folders. Projects from `fw new` have them. Otherwise, create them first:
+[fw_graph](ref:fw_graph) exports the current graph to the project's figures directory, creates missing subdirectories, and records the output checksum. You can also export directly with `graph export` when the directory exists:
 
 ```stata
-capture mkdir "$fw_root/outputs"
-capture mkdir "$fw_outputs_figures"
 scatter price mpg
-graph export "$fw_outputs_figures/price.png", replace
+fw_graph price
 fw_publish "$fw_outputs_figures/price.png", title("Price and mileage")
 ```
 
-Without `to()`, results go to the project's default destination. A project with no default goes to Framework Cloud, which needs a project token. See [Publishing](guide:publishing).
+When `to()` is omitted, `fw_publish` uses `publish.default` from `settings.yml`. Projects without a default destination publish to Framework Cloud using `FW_PROJECT_TOKEN` in `.env`. See [Publishing](guide:publishing).
 
 ## Examples
 
-The `examples` folder of the repository has five runnable do-files. They use `sysuse auto` and a temporary project, and publish to a local folder. `05-cleanup.do` removes the project.
+The repository's `examples` directory contains five runnable do-files using `sysuse auto` and a temporary local project. `05-cleanup.do` removes the temporary files.

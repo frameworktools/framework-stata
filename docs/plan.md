@@ -77,7 +77,7 @@ fw_set                                   // show current options
 fw_project [, root(path) quietly]
 
 fw_use  name [, clear check(strict|warn|off|accept)]
-fw_save name [, replace unlocked]
+fw_save name [, replace lock unlock]
 
 fw_publish filename [, slug(str) title(str) description(str) to(dest)
                       visibility(public|unlisted|private) private]
@@ -91,8 +91,8 @@ fw_logout [, url(str)]
 - `private` confirms a path that contains "private". It maps to
   `include_private=True` in framework-py and `--include-private` in `fw`.
 - `saving()` keeps a copy of `model.json`. Without it, the file is temporary.
-- `unlocked` matches `locked = FALSE` in R and Python. Datasets are locked
-  by default.
+- `lock` matches `locked = TRUE` in R and Python. Datasets are unlocked by
+  default. `unlock` matches `unlock = TRUE`.
 
 ### Named datasets
 

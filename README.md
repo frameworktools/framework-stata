@@ -1,20 +1,16 @@
 # Framework for Stata
 
-Framework gives a research project a standard layout, records which data an
-analysis used, and publishes results. This package brings the Framework
-workflow to Stata, alongside the R and Python packages and the `fw`
-command-line tool. All of them share one set of project settings, one data
-catalog, and the same publishing destinations.
+Framework gives a research project a standard directory layout, records dataset integrity, and publishes results. This package brings the Framework workflow to Stata alongside the R package, `framework-py`, and the `fw` CLI. All four tools share project settings, the data catalog, and publishing destinations.
 
 | Command | Purpose |
 |---|---|
 | `fw_setup` | Check Stata, system tools, backends, and the Cloud connection |
-| `fw_scaffold` | Load the project and prepare the session, as `scaffold()` does in R and Python |
+| `fw_scaffold` | Load the project and initialize the session |
 | `fw_project` | Find the project and set path globals |
-| `fw_packages` | List and install the packages a project uses |
-| `fw_use` | Load a named dataset and check its integrity |
+| `fw_packages` | List and install project packages |
+| `fw_use` | Load a named dataset and verify its integrity |
 | `fw_save` | Save a named dataset and record its integrity |
-| `fw_table` | Save the data in memory or a matrix as a table, with free-text headers |
+| `fw_table` | Save data in memory or a matrix as a table |
 | `fw_graph` | Export a graph to the figures folder |
 | `fw_publish` | Publish a figure, table, document, or estimation results |
 | `fw_login` | Connect this computer to Framework Cloud |
@@ -24,21 +20,20 @@ catalog, and the same publishing destinations.
 ## Requirements
 
 - Stata 14 or newer.
-- curl for Framework Cloud. It ships with macOS, Linux, and Windows 10 or later.
+- `curl` for Framework Cloud. It ships with macOS, Linux, and Windows 10 or later.
 
-Stata handles projects, datasets, SHA-256 checksums, publishing to a folder or
-to Framework Cloud, and Cloud login itself. Python is not needed.
+Stata handles projects, datasets, SHA-256 checksums, folder publishing, Cloud publishing, and Cloud authentication natively. Python is unnecessary for core features.
 
-## Install
+## Installation
 
 ```stata
 net install framework, from("https://raw.githubusercontent.com/frameworktools/framework-stata/main") replace
 fw_setup
 ```
 
-`fw_setup` lists what works and the exact steps for anything missing.
+`fw_setup` reports working components and prints setup steps for missing tools.
 
-To install from a checkout of this repository, point `from()` at its folder:
+To install from a local repository checkout, point `from()` at the checkout directory:
 
 ```stata
 net install framework, from("/path/to/framework-stata") replace
@@ -48,65 +43,39 @@ net install framework, from("/path/to/framework-stata") replace
 
 ```stata
 cd "~/projects/example-study"
-fw_project
+fw_scaffold
 fw_use inputs.raw.survey, clear
 regress outcome treatment age
 fw_publish, estimates title("Treatment effect")
 ```
 
-`fw_publish` goes to the project's default destination. A project with no
-default goes to Framework Cloud, which needs a project token in `.env`. See
-[Publishing](#publishing) for a folder destination.
+`fw_publish` uses the project's default destination. Projects without a configured default publish to Framework Cloud using the project token in `.env`. See [Publishing](#publishing) for folder destinations.
 
-The `examples` folder has five runnable do-files. They use `sysuse auto` and a
-temporary project, and publish to a local folder. `05-cleanup.do` removes the
-project.
+The `examples` folder contains five runnable do-files. They load `sysuse auto` in a temporary project and publish to a local folder. `05-cleanup.do` removes the temporary project.
 
 ## Projects
 
-`fw_project` walks up from the current folder to the first folder with
-`.framework/`, `settings.yml`, `config.yml`, or `settings.do`. It sets
-`$fw_root` and one global per project folder, such as `$fw_inputs_raw` and
-`$fw_outputs_figures`.
+`fw_project` searches upward from the current directory to the first directory containing `.framework/`, `settings.yml`, `config.yml`, or `settings.do`. It sets `$fw_root` and one global per project directory, such as `$fw_inputs_raw` and `$fw_outputs_figures`.
 
-Stata reads `settings.yml` directly, including split files such as
-`settings/data.yml` and environment sections. Plain YAML mappings, lists, and
-scalars work. Anchors, aliases, and nested flow collections stop with a clear
-error, and so does a tab in the indentation. Projects that `fw new --lang
-stata` created keep their folders in `settings.do`, and `fw_project` reads
-those too.
+Stata reads `settings.yml` directly, including split files such as `settings/data.yml` and environment sections. Plain YAML mappings, lists, and scalars are supported. Anchors, aliases, nested flow collections, and tab indentation stop with an error. Projects created with `fw new --lang stata` also define directory globals in `settings.do`, which `fw_project` reads.
 
-A project may have both files. `settings.do` holds folder globals for plain
-do-files. `settings.yml` holds what Stata shares with R, Python, and `fw`:
-`project_name`, `directories`, the data catalog, `publish` destinations,
-`security`, and `options`. `fw_project` reads `settings.yml` first and adds
-the folders of `settings.do` it does not set; every command works from that
-merged view. When both set a folder differently, `settings.yml` wins and
-`fw_project` prints a note.
+A project can contain both files. `settings.do` defines directory globals for plain Stata scripts. `settings.yml` holds settings shared across Stata, R, Python, and `fw`: `project_name`, `directories`, `packages`, `scaffold`, the data catalog, `publish` destinations, `security`, and `options`. `fw_project` reads `settings.yml` first and adds any `settings.do` directories absent from `settings.yml`. Every Framework command uses that merged configuration. When both files assign different paths to the same directory key, `settings.yml` takes precedence and `fw_project` prints a notice.
 
 ### Precision
 
-Stata stores new variables as float unless told otherwise: `generate`, and
-`collapse (mean)` of a variable that is not double, keep about 7 significant
-digits. R and Python compute in double, so results can differ from theirs at
-about 1e-7. To match them, put `set type double` near the top of `master.do`:
+Stata creates new numeric variables as `float` by default. Commands such as `generate` and `collapse (mean)` on non-`double` variables retain roughly seven significant digits. R and Python compute in double precision, so results can diverge near `1e-7`. Add `set type double` near the top of `master.do` to match R and Python precision:
 
 ```stata
 version 14
 set type double
-do "settings.do"
+fw_scaffold
 ```
 
-It lasts for the Stata session. Framework does not change it for you. A
-variable that is already float stays float; `recast double` it first. `fw_use`
-reads decimals in CSV files as double.
+The setting applies for the current Stata session. Framework does not change Stata's default storage type automatically. Existing `float` variables remain `float` until converted with `recast double`. `fw_use` imports decimal columns in CSV and TSV files as `double`.
 
 ## Packages
 
-`fw_packages` reads the packages a project lists under `packages` in its
-settings, the same section R writes to `settings/packages.yml`.
-`fw_packages install` installs the missing ones from SSC, GitHub, or a web
-address, and `fw_packages update` reinstalls them.
+`fw_packages` reads the `packages` section of `settings.yml` or `settings/packages.yml`. `fw_packages install` installs missing packages from SSC, GitHub, or a `net` URL. `fw_packages update` reinstalls configured packages.
 
 ```yaml
 packages:
@@ -119,22 +88,17 @@ packages:
       url: https://example.org/stata
 ```
 
-With `project_ado: true`, packages install into `ado/plus` in the project
-folder. Commit it to keep the exact versions with the project.
+When `project_ado: true` is set, packages install into `ado/plus` inside the project directory. Commit `ado/plus` to pin exact package code with the project.
 
 ## Session setup
 
-`fw_scaffold` does in Stata what `scaffold()` does in R and Python. Put it at
-the top of `master.do`:
+`fw_scaffold` initializes the Stata session from project settings. Run it at the top of `master.do`:
 
 ```stata
 fw_scaffold
 ```
 
-It loads the project, points PLUS at the project's `ado/plus` when
-`project_ado` is on, installs missing packages, sets the seed and graph
-scheme from `scaffold:` in `settings.yml`, adds the `functions` folder to the
-ado-path, and runs `scaffold.do` if the project has one.
+`fw_scaffold` loads the project, sets `PLUS` to `ado/plus` when `project_ado` is enabled, installs missing packages, applies the random seed and graph scheme from `scaffold:` in `settings.yml`, adds the `functions` directory to the ado-path, and runs `scaffold.do` when present.
 
 ```yaml
 scaffold:
@@ -151,30 +115,15 @@ fw_save inputs.final.analysis, replace
 fw_use inputs.final.analysis, clear
 ```
 
-`fw_save` records the file's SHA-256 checksum and Stata's `datasignature`.
-`fw_use` compares both before and after loading. A changed locked dataset stops
-with error 459; an unlocked one warns. `fw_save` locks a dataset unless you add
-`unlocked`. A name first recorded by `fw_use` is locked only when the catalog
-marks it `locked: true`. `fw_save` to a plain file path records the file under
-its path from the project root, as R's `data_save()` does. `fw_use` does not
-check plain paths, as R's `data_read()` does not. To accept
-a change to a locked dataset, load it with `fw_use <name>, clear check(accept)`.
-It records the new checksum and keeps the file as it is.
+`fw_save` records the file's SHA-256 checksum and Stata's `datasignature`. `fw_use` verifies the checksum before loading and the data signature afterward. A modified locked dataset stops with error 459. A modified unlocked dataset prints a warning. `fw_save` saves datasets unlocked unless you specify `lock`. Entries first recorded by `fw_use` are locked only when marked `locked: true` in the catalog.
 
-- SHA-256 comes from `sha256sum` or `shasum` on Linux and macOS and from
-  PowerShell on Windows. All three ship with the operating system.
-- Records live in `.framework/stata-integrity.tsv`. R and Python keep theirs in
-  `framework.db`, which Stata cannot read.
-- With the integrity ledger on (`options: cloud_ledger: live`), `fw_save` and
-  `fw_use, check(accept)` send the checksum, the file size, and this
-  computer's name to Framework Cloud, using the project token in `.env`. The
-  data itself is never uploaded.
+Saving to a file path records the checksum under its project-relative path. `fw_use` skips integrity checks on plain file paths, matching R's `data_read()`. To accept an intentional change to a locked dataset, run `fw_use <name>, clear check(accept)`. Stata records the updated checksum without rewriting the file.
 
-`fw_use` reads CSV and TSV files as R's `data_read()` does: empty cells and
-`NA` are missing, and decimals are double. It lists any column that import
-renames, such as a name longer than 32 characters. A catalog entry's
-`stata_names` maps such columns to names you choose, and `fw_save` writes the
-original names back. See `help fw_use` for `na()` and `asfloat`.
+- SHA-256 hashes use `sha256sum` or `shasum` on Linux and macOS and PowerShell on Windows.
+- Integrity records are stored in `.framework/stata-integrity.tsv`. R and Python store records in `framework.db`, which Stata cannot read.
+- When `options: cloud_ledger: live` is enabled, `fw_save` and `fw_use, check(accept)` send the checksum, file size, and hostname to Framework Cloud using `FW_PROJECT_TOKEN` from `.env`. Dataset rows are never uploaded.
+
+`fw_use` imports CSV and TSV files with R-compatible defaults: empty cells and `NA` become missing values, and decimal columns import as `double`. When Stata renames a column (for example, names exceeding 32 characters), `fw_use` lists the old and new names. Set `stata_names` on a catalog entry to map long file headers to chosen Stata variable names; `fw_save` restores the original headers when exporting CSV or TSV files. See `help fw_use` for `na()` and `asfloat`.
 
 ## Tables and figures
 
@@ -184,13 +133,7 @@ scatter mpg price
 fw_graph price-mpg, format(png pdf)
 ```
 
-`fw_table` and `fw_graph` are the counterparts of `save_table()` and
-`save_figure()`. They write to the project's tables and figures folders,
-create subfolders named in the file name, and record each file with its
-checksum in `.framework/stata-results.tsv`. Table headers are free text:
-variable labels, or the words of `headers()`. `fw_table` also saves a matrix.
-In a sensitive project, both write to the private folders unless you add
-`public`.
+`fw_table` and `fw_graph` match `save_table()` and `save_figure()` in R and Python. They write to the project's tables and figures directories, create nested subdirectories automatically, and record each output file with its SHA-256 checksum in `.framework/stata-results.tsv`. Table headers use variable labels or explicit `headers()` strings. `fw_table` also exports Stata matrices. In privacy-sensitive projects, both commands write to private output directories unless `public` is specified.
 
 ## Publishing
 
@@ -200,7 +143,7 @@ regress price mpg weight
 fw_publish, estimates slug(price-model) to(lab)
 ```
 
-Destinations come from the project settings:
+Publishing destinations are configured in `settings.yml`:
 
 ```yaml
 publish:
@@ -212,31 +155,24 @@ publish:
       visibility: private
 ```
 
-| Destination | Handled by |
+| Destination | Handler |
 |---|---|
-| A folder, such as a shared drive | Stata |
-| Framework Cloud | Stata, with curl and the project token in `.env` |
-| GitHub Pages | `fw` or framework-py |
-| S3 | `fw` or framework-py |
+| Local or shared folder | Stata |
+| Framework Cloud | Stata (`curl` with `FW_PROJECT_TOKEN` in `.env`) |
+| GitHub Pages | `fw` or `framework-py` |
+| S3 | `fw` or `framework-py` |
 
-Folder publishing builds the same `framework.bundle/v1` bundle R and Python
-build: every file with its checksum, an offline reader, and numbered versions.
-With a project token in `.env`, a folder publish also records the artifact's
-metadata in Framework Cloud. The files stay in the folder.
+Folder publishing writes the standard `framework.bundle/v1` layout: output files with SHA-256 checksums, an offline HTML reader, and numbered version directories. When `.env` defines a Cloud project token, folder publishing also registers artifact metadata with Framework Cloud while keeping files on local storage.
 
-`fw_publish` with a folder, or a wildcard such as `"$fw_outputs_figures/*.png"`,
-publishes the files as one artifact, as `publish_dir()` does in R and Python.
+Passing a directory or wildcard pattern such as `"$fw_outputs_figures/*.png"` publishes all matching files as one multi-file artifact, matching `publish_dir()` in R and Python.
 
-A file whose full path contains "private" needs confirmation. Interactive Stata
-asks. Batch mode stops until you add the `includeprivate` option. The `private`
-option is short for `visibility(private)`.
+Files whose resolved path contains `private` require confirmation. Interactive Stata prompts before upload. Batch mode stops with error 198 unless `includeprivate` is specified. The `private` option sets artifact visibility (`visibility(private)`).
 
 ### Estimation results
 
-`fw_publish, estimates` writes the same `model.json` that R and Python publish.
-Framework Cloud and the offline reader show a Stata model like any other.
+`fw_publish, estimates` serializes active estimation results to the shared `model.json` format rendered by Framework Cloud and the offline reader.
 
-| Command | Model type | Ratio view | Extras |
+| Command | Model type | Ratio view | Additional statistics |
 |---|---|---|---|
 | `regress` | linear | | R², adjusted R², residual SD |
 | `logit`, `logistic` | glm, binomial, logit | odds ratio | pseudo R², null log likelihood |
@@ -248,10 +184,7 @@ Framework Cloud and the offline reader show a Stata model like any other.
 | `stcox` | survival | hazard ratio | events |
 | `ivregress` | linear | | estimator, instruments |
 
-Other commands with `e(b)` and `e(V)` publish a generic coefficient table.
-Estimates stay on the model scale; `_cons` becomes `(Intercept)`; base and
-omitted factor levels are left out. `mixed` random effects cover independent,
-identity, exchangeable, and unstructured covariance.
+Other estimation commands exposing `e(b)` and `e(V)` publish a generic coefficient table. Estimates remain on the linear predictor scale, `_cons` maps to `(Intercept)`, and base or omitted factor levels are excluded. `mixed` supports independent, identity, exchangeable, and unstructured covariance structures.
 
 ## Framework Cloud
 
@@ -259,55 +192,40 @@ identity, exchangeable, and unstructured covariance.
 fw_login
 ```
 
-`fw_login` shows a code and opens the approval page. Sign in, or create a free
-account, and approve the computer. The token goes in the system keyring, where
-R, Python, and `fw` find it too. Without a keyring, it goes in a private file
-in `~/.config/framework`. The token never appears in Stata's Results window,
-macros, or logs: a small shell or PowerShell script reads it and hands it to
-curl in a private header file.
+`fw_login` displays a verification code and opens the browser approval page. Sign in and approve the computer. Stata stores the account token in the system keyring, shared with R, Python, and `fw`. Systems without a keyring store the token in a permission-restricted file under `~/.config/framework`. Tokens never appear in Stata's Results window, macros, or logs; a helper script passes credentials to `curl` via a temporary header file.
 
-Publishing a project to Cloud uses the project token in the project's `.env`
-file. `fw_login` connects the computer, not a project.
+`fw_login` authenticates the workstation. Publishing artifacts from a project uses `FW_PROJECT_TOKEN` in the project's `.env` file.
 
 ## Backends
 
-GitHub Pages and S3 publishing need one of two backends.
+GitHub Pages and S3 publishing require an external backend.
 
-**CLI.** Install `fw` from https://framework.pub/docs/cli. Stata finds it on
-the PATH. The Stata application on macOS starts with a short PATH; point to
-`fw` when it is not found:
+- **CLI (`fw`).** Install `fw` from https://cli.framework.pub/guides/install. Stata searches `PATH` and standard installation directories. On macOS, GUI applications inherit a minimal `PATH`; set the binary path explicitly when needed:
 
-```stata
-fw_set fw_path "/opt/homebrew/bin/fw"
-```
+  ```stata
+  fw_set fw_path "/opt/homebrew/bin/fw"
+  ```
 
-**Python.** Stata 16 or newer, with framework-py installed in Stata's Python
-3.11 or newer:
+- **Python (`framework-py`).** Requires Stata 16 or newer and Python 3.11 or newer. Check Stata's configured Python interpreter:
 
-```stata
-python query
-```
+  ```stata
+  python query
+  ```
 
-Then install framework-py with that Python:
+  Install `framework-py` into that interpreter:
 
-```sh
-/path/from/python/query -m pip install framework-py
-```
+  ```sh
+  /path/from/python/query -m pip install framework-py
+  ```
 
-Stata needs a Python built with a shared `libpython`. Most installers provide
-one. Some cluster modules are static and do not work; `uv python install 3.11`
-gives a shared build. Point Stata at the interpreter, and add a virtual
-environment's packages with `python set userpath`:
+  Stata requires a Python build with a shared `libpython`. Static cluster builds fail to load; `uv python install 3.11` installs a compatible shared build. Configure the interpreter path and optional virtual environment site-packages in Stata:
 
-```stata
-python set exec "/home/me/.local/share/uv/python/cpython-3.11.18-linux-x86_64-gnu/bin/python3.11"
-python set userpath "/home/me/venvs/framework/lib/python3.11/site-packages", prepend
-```
+  ```stata
+  python set exec "/home/me/.local/share/uv/python/cpython-3.11.18-linux-x86_64-gnu/bin/python3.11"
+  python set userpath "/home/me/venvs/framework/lib/python3.11/site-packages", prepend
+  ```
 
-**Choice.** `auto`, the default, uses Stata for folders and Cloud, then `fw`,
-then framework-py for GitHub and S3. Force one with `fw_set backend core`,
-`cli`, or `python`, or for one session with `global FW_BACKEND cli`. A forced
-backend that is unavailable stops with the exact fix; it never falls back.
+- **Backend selection.** The default `auto` mode uses native Stata for folder and Cloud targets, then tries `fw` and `framework-py` for GitHub Pages and S3. Pin a backend persistently with `fw_set backend core`, `cli`, or `python`, or per session with `global FW_BACKEND cli`. If a pinned backend is unavailable, Stata stops with setup instructions rather than falling back.
 
 ## Tests
 
@@ -315,24 +233,22 @@ backend that is unavailable stops with the exact fix; it never falls back.
 stata -b do tests/run.do
 ```
 
-The runner prints a pass/fail summary for the core, CLI, and Python layers.
-`scripts/jhpce-test.sh` copies the checkout to a Slurm cluster and runs it on a
-compute node. `docs/jhpce.md` records the latest results.
+The test runner reports pass and fail counts across the core, CLI, and Python test suites. `scripts/jhpce-test.sh` syncs the checkout to a Slurm cluster and runs the suite on a compute node. `docs/jhpce.md` records cluster test runs.
 
-Other checks:
+Static checks and packaging scripts:
 
 ```sh
-python3 scripts/check_version14.py   # core stays within Stata 14
-python3 scripts/build_pkg.py         # regenerate framework.pkg after adding files
-sh -n ado/fw_cloud_sh.ihlp           # shell syntax
+python3 scripts/check_version14.py   # verify Stata 14 compatibility
+python3 scripts/build_pkg.py         # regenerate framework.pkg
+sh -n ado/fw_cloud_sh.ihlp           # check shell script syntax
 ```
 
 ## Repository layout
 
-```
-ado/        commands, help files, Mata, and the Cloud scripts (installed)
-examples/   runnable do-files
-tests/      run.do, core/, cli/, python/, fixtures/
-scripts/    package build, Stata 14 check, cluster test runner
-docs/       plan and test reports
+```text
+ado/        commands, help files, Mata sources, and Cloud helper scripts
+examples/   runnable example do-files
+tests/      run.do, core/, cli/, python/, and fixtures/
+scripts/    package builder, Stata 14 syntax checker, and cluster test runner
+docs/       site guides, reference source, and test reports
 ```

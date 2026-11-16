@@ -1,14 +1,14 @@
 ---
 id: estimates
 title: Estimation results
-description: Models from regress, logit, mixed, stcox, and other commands
+description: Structured model artifacts from regress, logit, mixed, stcox, and other estimators
 section: features
 position: 4
 ---
 
-## Models
+## Model serialization
 
-`fw_publish, estimates` publishes the current estimation results as a model. It writes the same `model.json` that R and Python publish, so Framework Cloud and the offline reader show a Stata model like any other.
+`fw_publish, estimates` serializes Stata's active estimation results into the shared `model.json` representation used by R and Python. Framework Cloud and the offline reader display coefficients, forest plots, and fit statistics identically across languages.
 
 ```stata
 sysuse auto, clear
@@ -16,52 +16,52 @@ regress price mpg weight i.foreign
 fw_publish, estimates title("Price model") slug(price-model)
 ```
 
-The model has a coefficient table with estimates, standard errors, test statistics, p-values, and confidence intervals, plus fit statistics. The mapping runs in Mata. Python is not needed.
+Model extraction runs natively in Mata without Python. Each artifact includes point estimates, standard errors, test statistics, p-values, confidence intervals, and model-level fit statistics.
 
-## Supported commands
+## Supported estimators
 
-| Command | Model type | Ratio view | Extras |
-|---------|------------|------------|--------|
+| Command | Model type | Ratio scale | Additional fit statistics |
+|---|---|---|---|
 | `regress` | linear | | R², adjusted R², residual SD |
 | `logit`, `logistic` | glm, binomial, logit | odds ratio | pseudo R², null log likelihood |
 | `probit` | glm, binomial, probit | | pseudo R² |
 | `poisson` | glm, poisson, log | rate ratio | pseudo R² |
 | `nbreg` | glm, negative binomial, log | rate ratio | alpha |
 | `glm` | glm, family and link from Stata | by link | deviance, dispersion |
-| `mixed` | mixed | | random effects, groups, REML |
-| `stcox` | survival | hazard ratio | events |
-| `ivregress` | linear | | estimator, instruments |
+| `mixed` | mixed | | random effects, group counts, REML |
+| `stcox` | survival | hazard ratio | event count |
+| `ivregress` | linear | | estimator, instrument list |
 
-Every model also gets the number of observations and, when Stata has a log likelihood, AIC and BIC.
+Every model records the observation count (`e(N)`) alongside AIC and BIC whenever Stata reports a log likelihood.
 
-Other commands that leave `e(b)` and `e(V)` publish a generic coefficient table. `fw_publish` prints a note when it does.
+Other estimation commands that populate `e(b)` and `e(V)` publish a generic coefficient table, and `fw_publish` prints a notice when using the generic fallback.
 
-## Coefficient table
+## Coefficient table rules
 
-- Estimates stay on the model scale. `logistic` results are stored as log odds. The reader offers odds, rate, and hazard ratios.
-- `_cons` becomes `(Intercept)`.
-- Base and omitted factor levels are left out.
-- Multi-equation models prefix terms with the equation name.
-- Models with residual degrees of freedom use t statistics. The rest use z statistics.
+- Estimates are stored on the linear predictor scale (for example, `logistic` stores log odds while the reader provides an odds-ratio toggle).
+- `_cons` is normalized to `(Intercept)`.
+- Base and omitted factor levels are excluded.
+- Multi-equation estimators prefix term names with their equation name.
+- Estimators with residual degrees of freedom compute *t* statistics; others compute *z* statistics.
 
-## Ancillary parameters
+## Ancillary parameters and confidence levels
 
-Parameters that are not coefficients stay out of the coefficient table:
+Non-regression parameters are separated from main coefficients:
 
-- `nbreg` reports `alpha`, or `delta` with `dispersion(constant)`, as a fit statistic. R and Python report theta the same way.
-- Other free parameters, such as tobit's `var(e.y)` and ologit's cutpoints, go in an **Ancillary parameters** table. Variances, covariances, correlations, cutpoints, and tobit's sigma get no test, as in Stata's output. Variances and standard deviations get Stata's log-scale interval, and correlations its hyperbolic-arctangent interval.
-- `tobit` also reports `sigma`, the residual standard deviation.
+- `nbreg` records `alpha` (or `delta` under `dispersion(constant)`) as a fit statistic, matching `theta` in R and Python.
+- Auxiliary free parameters, such as `tobit` variance `var(e.y)` and `ologit` cutpoints, appear in an **Ancillary parameters** table without hypothesis tests where Stata omits them. Variance and standard deviation intervals use Stata's log transformation, and correlation intervals use the inverse hyperbolic tangent transformation.
+- `tobit` also records residual `sigma` in fit statistics.
 
-`level()` sets the confidence level. The default is `c(level)`, 95 unless you changed it with `set level`, as in R and Python. `fw_publish` does not read the level of the estimation command: after `regress, level(90)`, give `level(90)` to publish 90% intervals.
+Pass `level()` to set the confidence level. It defaults to `c(level)` (95 unless changed via `set level`). Because Stata does not store the display level passed to the estimation command, pass `level(90)` explicitly on `fw_publish` after `regress ..., level(90)`:
 
 ```stata
 logit foreign price mpg
 fw_publish, estimates level(90)
 ```
 
-## Mixed models
+## Mixed-effects models
 
-`mixed` adds a random-effects table: a standard deviation for each component, correlations, and the residual. It covers independent, identity, exchangeable, and unstructured covariance. The model also records the number of groups at each level and whether it used REML.
+`mixed` adds a random-effects summary containing component standard deviations, correlations, residual standard deviation, per-level group counts, and whether estimation used REML or ML. Supported covariance structures are `independent`, `identity`, `exchangeable`, and `unstructured`.
 
 ```stata
 webuse pig, clear
@@ -69,12 +69,12 @@ mixed weight week || id: week, covariance(unstructured)
 fw_publish, estimates title("Growth model")
 ```
 
-## Saved copy
+## Local JSON copy
 
-`saving()` keeps a copy of `model.json`.
+Pass `saving()` to write a local copy of `model.json` alongside publishing:
 
 ```stata
 fw_publish, estimates saving("$fw_outputs/price-model.json", replace)
 ```
 
-Destinations, versions, and stored results work as for files. See [Publishing](guide:publishing).
+Destinations, version numbering, private-path checks on the underlying dataset, and `r()` return values follow the same rules as file publishing. See [Publishing](guide:publishing).

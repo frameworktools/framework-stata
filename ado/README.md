@@ -1,15 +1,13 @@
 # Package files
 
-Everything in this folder is installed by `net install framework`.
+`net install framework` installs every file in this directory.
 
-`net install` keeps only Stata file types. Three files are not Stata code
-but ship with an `.ihlp` extension so they install:
+Because `net install` restricts extensions to Stata file types, three non-Stata assets use the `.ihlp` extension for distribution:
 
 | File | Contents |
 |---|---|
-| `fw_cloud_sh.ihlp` | The macOS and Linux shell script for Framework Cloud requests |
-| `fw_cloud_ps1.ihlp` | The Windows PowerShell script for the same requests |
-| `fw_reader_html.ihlp` | The offline artifact reader, copied from framework-py |
+| `fw_cloud_sh.ihlp` | macOS and Linux shell helper for Framework Cloud requests |
+| `fw_cloud_ps1.ihlp` | Windows PowerShell helper for Framework Cloud requests |
+| `fw_reader_html.ihlp` | Offline HTML artifact reader shared with `framework-py` |
 
-Stata copies the scripts to `.sh` and `.ps1` files in a private temporary
-folder before running them. Check the shell script with `sh -n fw_cloud_sh.ihlp`.
+Before execution, Stata copies the helper scripts to `.sh` or `.ps1` files inside a private temporary directory. Validate shell syntax with `sh -n fw_cloud_sh.ihlp`.

@@ -1,16 +1,14 @@
 ---
 id: packages
 title: Packages
-description: The packages a project lists, and installing them from SSC, GitHub, or a web address
+description: Project package lists and installation from SSC, GitHub, or net URLs
 section: features
 position: 7
 ---
 
-## Package list
+## Package configuration
 
-A project lists the community packages its do-files use. [fw_packages](ref:fw_packages) reads the list and installs what is missing, as `packages_install()` does in R and Python.
-
-List the packages under `packages` in `settings.yml`, or in `settings/packages.yml`, the file R writes:
+Projects declare community Stata packages under `packages` in `settings.yml` or `settings/packages.yml`. [fw_packages](ref:fw_packages) checks installed status and installs missing packages, matching `packages_install()` in R and Python.
 
 ```yaml
 packages:
@@ -27,32 +25,30 @@ packages:
       url: https://example.org/stata
 ```
 
-| Source | Installs with | Fields |
-|--------|---------------|--------|
-| `ssc` | `ssc install` | `name`. The default source. |
-| `github` | `net install` from the repository | `repo`, and `ref` for a tag, branch, or commit. Without `ref`, the default branch. |
-| `net` | `net install` from a folder or web address | `url`, the place that holds *name*`.pkg` |
+| Source | Installer | Fields |
+|---|---|---|
+| `ssc` | `ssc install` | `name` (default source when omitted) |
+| `github` | `net install` from GitHub | `repo`, plus optional `ref` (tag, branch, or commit; defaults to the repository default branch) |
+| `net` | `net install` from a directory or URL | `url` pointing to the location of `<name>.pkg` |
 
-A plain entry is shorthand. `- estout` is an SSC package, and `- sergiocorreia/reghdfe@6.12.3` is a GitHub package at tag 6.12.3. Entries for R and Python, with source `cran`, `bioc`, or `pypi`, are listed as skipped.
+Plain strings use shorthand notation: `- estout` installs `estout` from SSC, and `- sergiocorreia/reghdfe@6.12.3` installs `reghdfe` from GitHub at ref `6.12.3`. Entries with `cran`, `bioc`, or `pypi` sources belong to R or Python and are reported as skipped.
 
-## Installing
+## Package installation
 
 ```stata
-fw_packages              // what is installed and what is missing
-fw_packages install      // install the missing packages
-fw_packages update       // reinstall every package
+fw_packages              // list installed and missing packages
+fw_packages install      // install missing packages
+fw_packages update       // reinstall all configured packages
 fw_packages update reghdfe
 ```
 
-A package that fails to install does not stop the others. `fw_packages` then stops with the first error and names the packages that failed.
+If a package fails to install, `fw_packages` attempts the remaining packages first, then exits with the first error code and lists all failed package names.
 
-## Project packages
+## Project ado directory
 
-SSC keeps no old versions. A GitHub `ref` fixes a version, but most packages come from SSC. To keep exact versions, set `project_ado: true`. Packages then install into `ado/plus` in the project folder. Commit that folder, and everyone who runs the project uses the same code without installing anything.
+SSC does not archive historical package versions. Setting `project_ado: true` installs packages into `ado/plus` inside the project directory instead of Stata's shared `c(sysdir_plus)` directory. Committing `ado/plus` to Git pins exact `.ado` and `.mata` files for every collaborator without separate installation steps.
 
-Without `project_ado`, packages install into Stata's PLUS folder, `c(sysdir_plus)`, which every project on the computer shares.
-
-`fw_packages` points PLUS at the project folder only while it installs. [fw_scaffold](ref:fw_scaffold) points it there for the whole session and installs any missing packages, so `master.do` needs one line:
+`fw_packages` switches `PLUS` to `ado/plus` only during package operations. [fw_scaffold](ref:fw_scaffold) configures `PLUS` for the entire Stata session and installs any missing packages automatically:
 
 ```stata
 fw_scaffold
