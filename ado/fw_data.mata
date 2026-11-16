@@ -135,29 +135,117 @@ string scalar fw_catalog_locked_at(transmorphic S, string scalar path)
     return("")
 }
 
-// fw_save's write rules. A catalog entry with locked: true is source data
-// that fw_save never overwrites, by name or by path; R and Python never
-// write through a catalog entry either. A file outside the project root,
-// such as one in a folder that a settings.do global puts above the root,
-// needs the outside option.
-void fw_save_guard(string scalar path, real scalar outside)
+// The name of a locked integrity record for the file at path whose
+// datasignature is not sig (any record when sig is ""), or "". Records of
+// catalog entries are skipped: the catalog's flag wins.
+string scalar fw_integrity_locked_at(transmorphic S, string scalar path, string scalar sig)
+{
+    root = asarray(S, "__root")
+    file = fw_integrity_file(root)
+    if (!fileexists(file)) return("")
+    lines = fw_readlines(file)
+    for (i = 2; i <= rows(lines); i++) {
+        f = fw__tsv(lines[i])
+        if (cols(f) < 7) continue
+        if (f[5] != "1" | f[2] == "") continue
+        if (sig != "" & f[4] == sig) continue
+        if (asarray_contains(S, "data." + f[1] + ".path")) continue
+        if (fw_samepath(fw_abs(f[2], root), path)) return(f[1])
+    }
+    return("")
+}
+
+// fw_save's write rules, as R's and Python's data_save(). Saves are unlocked
+// unless the lock option is given. Locked data stays unchanged unless the
+// unlock option is given: fw_use stops when a locked file changed. Locked
+// data is a catalog entry with locked: true, by name or by path, or a
+// dataset fw_save recorded locked whose datasignature differs
+// from the data in memory. The same data passes and the lock stays (see
+// fw__same_as_record). A catalog entry's flag wins over the record, so
+// locked: false in the settings unlocks it. Only an existing file counts.
+// A file outside the project root, such as one in a folder that a
+// settings.do global puts above the root, needs the outside option.
+void fw_save_guard(string scalar path, real scalar outside, real scalar unlock,
+    string scalar sig)
 {
     S = fw_S()
     root = asarray(S, "__root")
-    name = fw_catalog_locked_at(S, path)
-    if (name != "") {
-        fw_error("fw_save does not overwrite locked catalog data." + fw_nl() +
-            "  dataset: " + name + " (locked: true in the project settings)" + fw_nl() +
-            "  file:    " + path + fw_nl() +
-            "Save the data under another name, such as a dot name in a project folder." + fw_nl() +
-            "To replace the source file itself, set locked: false for " + name + " first.", 608)
+    held = ""
+    where = ""
+    if (fileexists(path)) {
+        held = fw_catalog_locked_at(S, path)
+        if (held != "") {
+            where = "locked: true in the data catalog"
+            if (fw__same_as_record(root, held, path, sig)) held = ""
+        }
+        else {
+            held = fw_integrity_locked_at(S, path, sig)
+            if (held != "") where = "saved locked"
+        }
     }
+    if (held != "" & !unlock) {
+        fw_error("fw_save does not overwrite locked data." + fw_nl() +
+            "  dataset: " + held + " (" + where + ")" + fw_nl() +
+            "  file:    " + fw_path_record(path, root) + fw_nl() +
+            "Save the data under another name, or add the unlock option to replace it." + fw_nl() +
+            "The new file is then unlocked. Add the lock option to keep it locked.", 608)
+    }
+    if (held != "") printf("{txt}Replacing locked data %s (unlock option).\n", held)
     if (!outside & !fw_in_root(path, root)) {
         fw_error("fw_save writes inside the project unless you add the outside option." + fw_nl() +
             "  file:    " + path + fw_nl() +
             "  project: " + root + fw_nl() +
             "Check the name or path. To write there on purpose, add the outside option.", 198)
     }
+}
+
+// fw_table's rule: a table never replaces locked data, as R's save_table().
+void fw_output_guard(string scalar caller, string scalar path)
+{
+    if (!fileexists(path)) return
+    S = fw_S()
+    held = fw_catalog_locked_at(S, path)
+    where = "locked: true in the data catalog"
+    if (held == "") {
+        held = fw_integrity_locked_at(S, path, "")
+        where = "saved locked"
+    }
+    if (held == "") return
+    fw_error(caller + " does not overwrite locked data." + fw_nl() +
+        "  dataset: " + held + " (" + where + ")" + fw_nl() +
+        "  file:    " + fw_path_record(path, asarray(S, "__root")) + fw_nl() +
+        "Save under another name.", 608)
+}
+
+// Whether the data in memory (datasignature sig) is the data in the file at
+// path, by the integrity record for name. R and Python compare the new file's
+// bytes with the old file's, but a .dta embeds its save time, so the same
+// data never writes the same bytes. Instead: the file's SHA-256 must match
+// the record's, so the record describes the file as it is, and the record's
+// datasignature must match sig. No record, or no SHA-256 tool, is not a
+// match, so the save is refused as before.
+real scalar fw__same_as_record(string scalar root, string scalar name,
+    string scalar path, string scalar sig)
+{
+    R = fw_integrity_get(root, name)
+    if (R[1] == "" | R[3] == "" | R[4] == "" | sig == "") return(0)
+    if (R[4] != sig) return(0)
+    d = fw_scratch()
+    sha = fw_sha256(path, d)[1]
+    fw_scratch_done(d)
+    return(sha != "" & sha == R[3])
+}
+
+// Whether the existing file at path is locked now: locked (the lock
+// fw_data_resolve found by name), a catalog entry with locked: true for the
+// file, or a locked integrity record for it. fw_save keeps this lock when it
+// saves the same data without the lock or unlock option.
+real scalar fw_save_locked_now(string scalar path, real scalar locked)
+{
+    if (!fileexists(path)) return(0)
+    if (locked) return(1)
+    S = fw_S()
+    return(fw_catalog_locked_at(S, path) != "" | fw_integrity_locked_at(S, path, "") != "")
 }
 
 // ---------------------------------------------------------------------------

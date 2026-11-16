@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.3.0  15nov2026}{...}
+{* *! version 0.3.1  16nov2026}{...}
 {title:Title}
 
 {phang}
@@ -36,7 +36,11 @@ Publishing a project to Cloud uses the project token in its {bf:.env} file;
 
 {phang}
 {opt url(string)} connects to a Framework Cloud server other than
-{browse "https://framework.pub"}, such as a self-hosted one.
+{browse "https://framework.pub"}, such as a self-hosted one. Without
+{opt url()}, {cmd:fw_login} uses {bf:FW_CLOUD_URL}, then the last login saved
+by fw, R, Python, or Stata, then {browse "https://framework.pub"}, which the
+notice names before connecting. Other commands never fall back to
+framework.pub.
 
 {phang}
 {opt nobrowser} prints the link without opening the browser. Batch mode never

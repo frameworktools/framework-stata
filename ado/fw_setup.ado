@@ -41,9 +41,16 @@ program define fw_setup, rclass
 
     * Framework Cloud
     display as text _n "{bf:Framework Cloud}"
-    mata: st_local("server", fw_cloud_url("", st_local("url")))
-    mata: st_local("source", fw__setup_token(st_local("server")))
-    display as text "  server          " as result `"`server'"'
+    mata: fw_cloud_server_locals("", st_local("url"))
+    local server `"`fw_server'"'
+    if `"`server'"' == "" {
+        display as text "  server          " as text "none chosen"
+        local source none
+    }
+    else {
+        mata: st_local("source", fw__setup_token(st_local("server")))
+        display as text "  server          " as result `"`server'"'
+    }
     if "`source'" == "none" {
         display as text "  login           " as text "not connected"
         local ++steps
@@ -56,9 +63,15 @@ program define fw_setup, rclass
         }
     }
     if `"`root'"' != "" {
-        * Project publishing and the ledger skip the login default, as in fw, R, and Python.
-        mata: st_local("pserver", fw_cloud_url(st_local("root")))
-        if `"`pserver'"' != `"`server'"' {
+        * Project publishing and the ledger read the project's .env first, as in fw, R, and Python.
+        mata: fw_cloud_server_locals(st_local("root"), "")
+        local pserver `"`fw_server'"'
+        local pwhy `"`fw_why'"'
+        if `"`pserver'"' == "" {
+            display as text "  project server  " as text "none chosen"
+            display as text `"  `pwhy'"'
+        }
+        else if `"`pserver'"' != `"`server'"' {
             display as text "  project server  " as result `"`pserver'"'
             display as text "  This project publishes there, not to your login server. It takes FW_CLOUD_URL"
             display as text "  from the project's .env or the environment; fw project link writes the .env."

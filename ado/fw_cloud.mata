@@ -164,7 +164,12 @@ void fw_ledger_push(string scalar root, string scalar name, string scalar sha, s
         printf("{txt}Ledger push skipped: no SHA-256 tool was found.\n")
         return
     }
-    url = fw_cloud_url(root)
+    why = ""
+    url = fw_cloud_resolve(root, "", 0, why)
+    if (url == "") {
+        printf("{txt}Ledger push skipped: %s\n", why)
+        return
+    }
     d = fw_scratch()
     body = "{" + fw_json_str("name") + ":" + fw_json_str(name) + "," +
         fw_json_str("algo") + ":" + fw_json_str("sha256") + "," +
@@ -207,7 +212,7 @@ void fw_consent_notice(string scalar url)
 
 void fw_login_run(string scalar given, real scalar noopen)
 {
-    url = fw_cloud_url("", given)
+    url = fw_cloud_url("", given, 1)
     host = fw_url_host(url)
     d = fw_scratch()
     if (!fw_have_curl(d)) {

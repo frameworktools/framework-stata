@@ -401,7 +401,14 @@ void fw_folder_deliver(string scalar bundle, string scalar site, string scalar b
 void fw_track_external(string scalar root, string scalar bundle, string scalar manifest,
     string scalar driver, string scalar visibility)
 {
-    url = fw_cloud_url(root)
+    why = ""
+    url = fw_cloud_resolve(root, "", 0, why)
+    if (url == "") {
+        if (fw_env("FW_PROJECT_TOKEN") != "" | fw_dotenv(root, "FW_PROJECT_TOKEN") != "") {
+            printf("{txt}Not recorded on Framework Cloud: %s\n", why)
+        }
+        return
+    }
     d = fw_scratch()
     status = fw_http("me", "GET", url + "/api/v1/me", "project", root, d, "", J(0, 3, ""), 30)
     if (status == -3) {

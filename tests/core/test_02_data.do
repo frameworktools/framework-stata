@@ -11,7 +11,7 @@ fw_project, quietly
 t_begin data: fw_save writes a dot-named .dta and records it
 capture noisily {
     sysuse auto, clear
-    fw_save inputs.final.analysis
+    fw_save inputs.final.analysis, lock
     confirm file `"`root'/inputs/final/analysis.dta"'
     assert r(locked) == 1
     assert strlen("`r(sha256)'") == 64
@@ -44,7 +44,9 @@ t_begin data: fw_save refuses to overwrite without replace
 capture noisily {
     capture fw_save inputs.final.analysis
     assert _rc == 602
+    * The same data saved again without lock keeps the lock.
     fw_save inputs.final.analysis, replace
+    assert r(locked) == 1
 }
 t_end `=_rc'
 
@@ -68,10 +70,33 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin data: fw_save saves unlocked by default, so a second save replaces the data
+capture noisily {
+    sysuse auto, clear
+    fw_save inputs.intermediate.rebuilt
+    assert r(locked) == 0
+    mata: assert(fw_integrity_get(st_local("root"), "inputs.intermediate.rebuilt")[5] == "0")
+    keep in 1/10
+    fw_save inputs.intermediate.rebuilt, replace
+    assert r(locked) == 0
+    fw_use inputs.intermediate.rebuilt, clear
+    assert c(N) == 10
+    * By path too.
+    sysuse auto, clear
+    fw_save "inputs/intermediate/rebuilt.csv", replace
+    keep in 1/5
+    fw_save "inputs/intermediate/rebuilt.csv", replace
+    assert r(locked) == 0
+    * The deprecated unlocked option is accepted and changes nothing.
+    fw_save inputs.intermediate.rebuilt, replace unlocked
+    assert r(locked) == 0
+}
+t_end `=_rc'
+
 t_begin data: unlocked datasets warn and update the record
 capture noisily {
     sysuse auto, clear
-    fw_save inputs.intermediate.cars, unlocked
+    fw_save inputs.intermediate.cars
     local first `"`r(sha256)'"'
     keep in 1/10
     save `"`root'/inputs/intermediate/cars.dta"', replace
@@ -145,7 +170,7 @@ t_end `rc'
 t_begin data: the 459 message gives the way to accept a change
 capture noisily {
     sysuse auto, clear
-    fw_save inputs.final.accept, replace
+    fw_save inputs.final.accept, replace lock
     keep in 1/20
     save `"`root'/inputs/final/accept.dta"', replace
     clear
@@ -170,7 +195,7 @@ t_end `=_rc'
 t_begin data: check(accept) records a changed locked .dta without rewriting it
 capture noisily {
     sysuse auto, clear
-    fw_save inputs.final.accept_dta, replace
+    fw_save inputs.final.accept_dta, replace lock
     local file `"`root'/inputs/final/accept_dta.dta"'
     mata: R0 = fw_integrity_get(st_local("root"), "inputs.final.accept_dta")
     keep in 1/30
@@ -272,7 +297,81 @@ capture noisily {
     local rc3 = _rc
     t_log_end
     assert `rc1' == 608 & `rc2' == 608 & `rc3' == 608
-    t_log_has "dataset: inputs.raw.survey (locked: true in the project settings)"
+    t_log_has "dataset: inputs.raw.survey (locked: true in the data catalog)"
+    t_log_has "file:    inputs/raw/survey.csv"
+    mata: assert(fw_readfile(st_local("file")) == B0)
+    * The same data saves over the locked entry, as in R and Python, and the
+    * lock stays: its datasignature matches the record, and the file matches
+    * the record's SHA-256.
+    fw_use inputs.raw.survey, clear
+    fw_save inputs.raw.survey, replace
+    assert r(locked) == 1
+    fw_use inputs.raw.survey, clear
+    assert c(N) == 12
+    assert r(locked) == 1
+    * Changed data is still refused.
+    drop in 1
+    capture fw_save inputs.raw.survey, replace
+    assert _rc == 608
+    fw_use inputs.raw.survey, clear
+    assert c(N) == 12
+}
+t_end `=_rc'
+
+t_begin data: fw_save does not change data it saved locked, unless unlock
+capture noisily {
+    sysuse auto, clear
+    fw_save inputs.final.relock, lock
+    * The same data saves again and stays locked.
+    fw_save inputs.final.relock, replace
+    assert r(locked) == 1
+    local file `"`root'/inputs/final/relock.dta"'
+    mata: B0 = fw_readfile(st_local("file"))
+    keep in 1/10
+    t_log_begin
+    capture noisily fw_save inputs.final.relock, replace
+    local rc = _rc
+    t_log_end
+    assert `rc' == 608
+    t_log_has "fw_save does not overwrite locked data."
+    t_log_has "dataset: inputs.final.relock (saved locked)"
+    t_log_has "file:    inputs/final/relock.dta"
+    t_log_has "Save the data under another name, or add the unlock option to replace it."
+    t_log_has "The new file is then unlocked. Add the lock option to keep it locked."
+    mata: assert(fw_readfile(st_local("file")) == B0)
+    * A plain path to the same file is refused too.
+    capture fw_save "inputs/final/relock.dta", replace
+    assert _rc == 608
+    * unlock with lock replaces it and keeps the lock.
+    fw_save inputs.final.relock, replace unlock lock
+    assert r(locked) == 1
+    fw_use inputs.final.relock, clear
+    assert c(N) == 10
+    sysuse auto, clear
+    capture fw_save inputs.final.relock, replace
+    assert _rc == 608
+    * unlock alone replaces it unlocked; later saves replace it.
+    fw_save inputs.final.relock, replace unlock
+    assert r(locked) == 0
+    keep in 1/5
+    fw_save inputs.final.relock, replace
+    assert r(locked) == 0
+}
+t_end `=_rc'
+
+t_begin data: fw_table does not overwrite a file fw_save locked
+capture noisily {
+    sysuse auto, clear
+    keep make price
+    fw_save "outputs/tables/held.csv", replace lock
+    local file `"`root'/outputs/tables/held.csv"'
+    mata: B0 = fw_readfile(st_local("file"))
+    t_log_begin
+    capture noisily fw_table held
+    local rc = _rc
+    t_log_end
+    assert `rc' == 608
+    t_log_has "fw_table does not overwrite locked data."
     mata: assert(fw_readfile(st_local("file")) == B0)
 }
 t_end `=_rc'
@@ -315,7 +414,8 @@ capture noisily {
     mata: assert(R[2] == "outputs/tables/recorded.csv")
     mata: assert(R[3] == st_local("sha"))
     mata: assert(R[3] == fw_sha256_file(st_local("root") + "/outputs/tables/recorded.csv"))
-    * The same file saved from a subfolder gets the same record name.
+    * The same file saved from a subfolder gets the same record name. The
+    * record is unlocked, so new data replaces it.
     quietly cd `"`root'/notebooks"'
     keep in 1/5
     fw_save "outputs/tables/recorded.csv", replace

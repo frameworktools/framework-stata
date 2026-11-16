@@ -44,6 +44,7 @@ program define fw_table, rclass
                 exit 602
             }
         }
+        mata: fw_output_guard("fw_table", st_local("fw_stem") + ".`f'")
     }
 
     * A public table from data that came from a private file gets a warning.

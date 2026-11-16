@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.3.0  15nov2026}{...}
+{* *! version 0.3.1  16nov2026}{...}
 {title:Title}
 
 {phang}
@@ -9,7 +9,7 @@
 {title:Syntax}
 
 {p 8 16 2}
-{cmd:fw_save} {it:name} [{cmd:,} {opt replace} {opt unlocked} {opt out:side} {opt opt:ions(string)}]
+{cmd:fw_save} {it:name} [{cmd:,} {opt replace} {opt lock} {opt unlock} {opt out:side} {opt opt:ions(string)}]
 
 
 {title:Description}
@@ -37,11 +37,28 @@ records the file's checksum under its path from the project root, as R's
 {bf:data_read()} does not.
 
 {pstd}
-{cmd:fw_save} never writes to the file of a catalog entry with
-{bf:locked: true}, whether you give its name or its path. Such entries are
-source data: read them with {helpb fw_use} and save the result under another
-name. It also stops for a file outside the project folder, such as one in a
-folder that a {bf:settings.do} global puts above the project, unless you add
+Saved data is unlocked unless you add {opt lock}, as in R's and Python's
+{bf:data_save()}. A do-file can then save it again.
+
+{pstd}
+{cmd:fw_save} does not change locked data, as R's and Python's
+{bf:data_save()} do not: {helpb fw_use} stops when a locked file changed.
+Locked data is the file of a catalog entry with {bf:locked: true}, whether you
+give its name or its path, or a dataset {cmd:fw_save} saved with {opt lock}.
+Saving the same data again works and keeps the lock; new data stops with
+error 608 and leaves the file as it was. Save the result under another name,
+or add {opt unlock} to replace the file. Setting {bf:locked: false} for a
+catalog entry unlocks it.
+
+{pstd}
+The same data means the same {cmd:datasignature} as the dataset's integrity
+record, with the file still matching the record's SHA-256. A {cmd:.dta} file
+stores its save time, so the file bytes cannot tell. Without a record or a
+SHA-256 tool, a locked catalog entry needs {opt unlock}.
+
+{pstd}
+{cmd:fw_save} also stops for a file outside the project folder, such as one in
+a folder that a {bf:settings.do} global puts above the project, unless you add
 {opt outside}.
 
 
@@ -51,22 +68,34 @@ folder that a {bf:settings.do} global puts above the project, unless you add
 {opt replace} overwrites an existing file.
 
 {phang}
-{opt unlocked} lets the dataset change. {cmd:fw_use} then warns rather than
-stops when the file differs from its record.
+{opt lock} locks the dataset. {cmd:fw_use} then stops when the file differs
+from its record, and a later save of new data needs {opt unlock}. Without
+{opt lock}, {cmd:fw_use} warns and updates the record, and later saves replace
+the file.
 
 {phang}
-{opt outside} allows a file outside the project folder. Locked catalog
-entries stay read-only.
+{opt unlock} replaces locked data. The new file is unlocked unless you also add
+{opt lock}.
+
+{phang}
+{opt outside} allows a file outside the project folder. Locked data still
+needs {opt unlock}.
 
 {phang}
 {opt options(string)} passes options to {cmd:save}, {cmd:export delimited}, or
 {cmd:export excel}.
 
+{phang}
+{opt unlocked} is deprecated and does nothing. Saves are unlocked unless you
+add {opt lock}. Do-files that still give it keep working.
+
 
 {title:Example}
 
-{phang2}{cmd:. fw_save inputs.final.analysis, replace}{p_end}
+{phang2}{cmd:. fw_save inputs.intermediate.clean, replace}{p_end}
+{phang2}{cmd:. fw_save inputs.final.analysis, replace lock}{p_end}
 {phang2}{cmd:. fw_save "outputs/tables/summary.csv", replace}{p_end}
+{phang2}{cmd:. fw_save inputs.final.analysis, replace unlock lock}{p_end}
 
 
 {title:Stored results}

@@ -112,6 +112,35 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin cloud: a project without FW_CLOUD_URL uses the saved login, never framework.pub
+capture noisily {
+    if `"`: environment FW_CLOUD_URL'"' == "" {
+        t_tmpdir
+        local bare `"`r(dir)'"'
+        t_write `"`bare'/.env"' "FW_PROJECT_TOKEN=unused"
+        * fw_login saved http://127.0.0.1:port in cloud.yml.
+        mata: assert(fw_cloud_url(st_local("bare")) == "http://127.0.0.1:" + st_local("port"))
+        * Without a saved login, nothing names a server: resolution fails, and
+        * only fw_login offers framework.pub.
+        local cfg : environment FW_CONFIG_HOME
+        mata: st_local("rsaved", strofreal(fileexists(fw_r_config_dir() + "/cloud.yml")))
+        if !`rsaved' {
+            copy `"`cfg'/cloud.yml"' `"`bare'/cloud.yml.saved"'
+            erase `"`cfg'/cloud.yml"'
+            mata: why = ""
+            mata: assert(fw_cloud_resolve(st_local("bare"), "", 0, why) == "")
+            mata: assert(strpos(why, "No Framework Cloud server is chosen") > 0)
+            mata: assert(fw_cloud_resolve("", "", 0, why) == "")
+            mata: assert(fw_cloud_resolve("", "", 1, why) == "https://framework.pub")
+            capture mata: fw_cloud_url(st_local("bare"))
+            local norc = _rc
+            copy `"`bare'/cloud.yml.saved"' `"`cfg'/cloud.yml"'
+            if `norc' == 0 exit 9
+        }
+    }
+}
+t_end `=_rc'
+
 t_begin cloud: fw_publish uploads to the project with its project token
 capture noisily {
     sysuse auto, clear

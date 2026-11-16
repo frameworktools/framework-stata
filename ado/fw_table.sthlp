@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.3.0  15nov2026}{...}
+{* *! version 0.3.1  16nov2026}{...}
 {title:Title}
 
 {phang}
@@ -99,7 +99,9 @@ leaves the cells empty.
 
 {phang}
 {opt noreplace} stops with error 602 when the file exists. By default
-{cmd:fw_table} overwrites it, as {bf:save_table()} does.
+{cmd:fw_table} overwrites it, as {bf:save_table()} does. A file that is
+locked data, such as one {helpb fw_save} saved with {opt lock}, stops with
+error 608.
 
 
 {title:Examples}

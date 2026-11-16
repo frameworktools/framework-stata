@@ -2,20 +2,24 @@
 *! Part of the framework package
 program define fw_save, rclass
     version 14
-    syntax anything(name=name id="dataset name") [, REPLACE UNLOCKED OUTside OPTions(string asis)]
+    * unlocked is accepted and ignored: saves are unlocked unless lock is given.
+    syntax anything(name=name id="dataset name") [, REPLACE LOCK UNLOCKED UNLOCK OUTside OPTions(string asis)]
     _fw_need_project
     gettoken name : name
     mata: fw_data_resolve(st_local("name"), 1)
-    mata: fw_save_guard(st_local("fw_path"), "`outside'" != "")
+    quietly datasignature
+    local sig `"`r(datasignature)'"'
+    mata: fw_save_guard(st_local("fw_path"), "`outside'" != "", "`unlock'" != "", st_local("sig"))
+    * Saves are unlocked unless lock is given. Locked data saved again with
+    * the same data stays locked; unlock saves it unlocked.
+    mata: st_local("fw_held", strofreal(fw_save_locked_now(st_local("fw_path"), `fw_locked')))
+    local locked = ("`lock'" != "" | ("`unlock'" == "" & `fw_held'))
     capture confirm file `"`fw_path'"'
     if !_rc & "`replace'" == "" {
         display as error `"`fw_path' already exists. Add the replace option to overwrite it."'
         exit 602
     }
     mata: fw_mkdirp(fw_dirname(st_local("fw_path")))
-    quietly datasignature
-    local sig `"`r(datasignature)'"'
-    local locked = ("`unlocked'" == "")
 
     if "`fw_type'" == "dta" {
         quietly save `"`fw_path'"', `replace' `options'

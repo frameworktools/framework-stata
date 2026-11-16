@@ -10,7 +10,7 @@ version 14
 mata:
 mata set matastrict off
 
-string scalar fw_version() return("0.3.0")
+string scalar fw_version() return("0.3.1")
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -1259,23 +1259,79 @@ string scalar fw_saved_server()
     return(rc == 0 ? b : a)
 }
 
-// The Framework Cloud server. Project calls (root given) use the project's
-// .env, then FW_CLOUD_URL, then framework.pub, and never the login default,
-// so a project token only goes to the server that issued it. User calls
-// (root "") use FW_CLOUD_URL, then the login default, then framework.pub.
-// fw, R, and Python resolve the server the same way.
-string scalar fw_cloud_url(string scalar root, | string scalar given)
+// A server URL without trailing slashes, with https:// when it has no scheme.
+string scalar fw__tidy_url(string scalar given)
 {
-    if (args() > 1 & given != "") u = given
-    else {
-        u = (root != "" ? fw_dotenv(root, "FW_CLOUD_URL") : "")
-        if (u == "") u = fw_env("FW_CLOUD_URL")
-        if (u == "" & root == "") u = fw_saved_server()
-        if (u == "") u = "https://framework.pub"
-    }
+    u = given
     while (fw_endswith(u, "/")) u = substr(u, 1, strlen(u) - 1)
-    if (!regexm(u, "^https?://")) u = "https://" + u
+    if (u != "" & !regexm(u, "^https?://")) u = "https://" + u
     return(u)
+}
+
+// "a and b" when fw's and R's cloud.yml name different servers, else "".
+string scalar fw__saved_conflict()
+{
+    fwf = fw_config_dir() + "/cloud.yml"
+    rf = fw_r_config_dir() + "/cloud.yml"
+    if (rf == fwf) return("")
+    a = fw__tidy_url(fw__cloud_yml_server(fwf))
+    b = fw__tidy_url(fw__cloud_yml_server(rf))
+    if (a == "" | b == "" | strlower(a) == strlower(b)) return("")
+    return(fw_url_host(a) + " and " + fw_url_host(b))
+}
+
+// The Framework Cloud server, or "" with the reason in why. given (a url()
+// option) wins. Project calls (root given) then use the project's .env,
+// FW_CLOUD_URL, and the saved login; when fw's and R's saved logins differ
+// they stop rather than guess. User calls (root "") use FW_CLOUD_URL, then
+// the saved login. Only fw_login (forlogin 1) falls back to framework.pub,
+// which its notice names: using the public cloud is the user's choice.
+// fw, R, and Python resolve the server the same way.
+string scalar fw_cloud_resolve(string scalar root, string scalar given, real scalar forlogin, string scalar why)
+{
+    why = ""
+    u = given
+    if (u == "" & root != "") u = fw_dotenv(root, "FW_CLOUD_URL")
+    if (u == "") u = fw_env("FW_CLOUD_URL")
+    if (u == "" & root != "") {
+        both = fw__saved_conflict()
+        if (both != "") {
+            why = "This project does not say which Framework Cloud server it uses: its .env has no FW_CLOUD_URL, and you are logged in to " +
+                both + ". Add FW_CLOUD_URL=<server> to the project's .env, or set FW_CLOUD_URL."
+            return("")
+        }
+    }
+    if (u == "") u = fw_saved_server()
+    if (u == "" & forlogin) u = "https://framework.pub"
+    if (u == "") {
+        why = "No Framework Cloud server is chosen. " +
+            (root != "" ? "This project's .env has no FW_CLOUD_URL and you have not logged in. Add FW_CLOUD_URL=<server> to .env, or log in" : "Log in") +
+            " with fw_login (framework.pub) or fw_login, url(<server>), or set FW_CLOUD_URL."
+        return("")
+    }
+    return(fw__tidy_url(u))
+}
+
+// The Framework Cloud server, as fw_cloud_resolve() finds it. Stops with an
+// error when nothing names one.
+string scalar fw_cloud_url(string scalar root, | string scalar given, real scalar forlogin)
+{
+    g = ""
+    if (args() > 1) g = given
+    lg = 0
+    if (args() > 2) lg = forlogin
+    why = ""
+    u = fw_cloud_resolve(root, g, lg, why)
+    if (u == "") fw_error(why, 198)
+    return(u)
+}
+
+// Sets the locals fw_server, "" when nothing names one, and fw_why.
+void fw_cloud_server_locals(string scalar root, string scalar given)
+{
+    why = ""
+    st_local("fw_server", fw_cloud_resolve(root, given, 0, why))
+    st_local("fw_why", why)
 }
 
 // host[:port] of a URL, the keyring service suffix.
