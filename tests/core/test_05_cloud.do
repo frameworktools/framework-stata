@@ -112,12 +112,12 @@ capture noisily {
 }
 t_end `=_rc'
 
-t_begin cloud: a project without FW_CLOUD_URL uses the saved login, never framework.pub
+t_begin cloud: a project without a token or FW_CLOUD_URL uses the saved login, never framework.pub
 capture noisily {
     if `"`: environment FW_CLOUD_URL'"' == "" {
         t_tmpdir
         local bare `"`r(dir)'"'
-        t_write `"`bare'/.env"' "FW_PROJECT_TOKEN=unused"
+        t_write `"`bare'/.env"' "OTHER=1"
         * fw_login saved http://127.0.0.1:port in cloud.yml.
         mata: assert(fw_cloud_url(st_local("bare")) == "http://127.0.0.1:" + st_local("port"))
         * Without a saved login, nothing names a server: resolution fails, and
@@ -137,6 +137,50 @@ capture noisily {
             copy `"`bare'/cloud.yml.saved"' `"`cfg'/cloud.yml"'
             if `norc' == 0 exit 9
         }
+    }
+}
+t_end `=_rc'
+
+t_begin cloud: a project token without FW_CLOUD_URL stops instead of using the saved login
+capture noisily {
+    if `"`: environment FW_CLOUD_URL'"' == "" {
+        t_tmpdir
+        local tokened `"`r(dir)'"'
+        t_write `"`tokened'/.env"' "# FW_CLOUD_URL=" "FW_PROJECT_TOKEN=unused"
+        * The saved login names http://127.0.0.1:port, but the project does not.
+        mata: why = ""
+        mata: assert(fw_cloud_resolve(st_local("tokened"), "", 0, why) == "")
+        mata: assert(why == "This project's .env has FW_PROJECT_TOKEN but no FW_CLOUD_URL, so it does not say which Framework Cloud server issued the token. Add FW_CLOUD_URL=<server> to .env.")
+        capture mata: fw_cloud_url(st_local("tokened"))
+        assert _rc == 198
+        * Publishing stops with the same error.
+        capture mata: fw_cloud_publish(st_local("tokened"), "x.png", "", "", "", "", "")
+        assert _rc == 198
+        * An explicit server still counts.
+        mata: assert(fw_cloud_url(st_local("tokened"), "http://localhost:" + st_local("port")) == "http://localhost:" + st_local("port"))
+        * The ledger says why it skipped and sends nothing.
+        t_requests `"`log'"'
+        mata: nled = sum(strpos(R, "/api/v1/ledger") :> 0)
+        t_log_begin
+        mata: fw_ledger_push(st_local("tokened"), "inputs.final.cars", 64 * "a", st_local("tokened") + "/.env")
+        t_log_end
+        t_log_has "Ledger push skipped: This project's .env"
+        t_requests `"`log'"'
+        mata: assert(sum(strpos(R, "/api/v1/ledger") :> 0) == nled)
+        * Account calls still use the saved login.
+        mata: assert(fw_cloud_url("") == "http://127.0.0.1:" + st_local("port"))
+    }
+}
+t_end `=_rc'
+
+t_begin cloud: a project's FW_CLOUD_URL wins over a different saved login
+capture noisily {
+    if `"`: environment FW_CLOUD_URL'"' == "" {
+        t_tmpdir
+        local other `"`r(dir)'"'
+        t_write `"`other'/.env"' "FW_CLOUD_URL=http://localhost:`port'/" "FW_PROJECT_TOKEN=unused"
+        * The saved login is http://127.0.0.1:port.
+        mata: assert(fw_cloud_url(st_local("other")) == "http://localhost:" + st_local("port"))
     }
 }
 t_end `=_rc'

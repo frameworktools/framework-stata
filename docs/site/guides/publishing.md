@@ -92,7 +92,7 @@ Cloud uploads transfer files over HTTPS via `curl`, authenticating with `FW_PROJ
 FW_PROJECT_TOKEN=paste-the-project-token-here
 ```
 
-Issue project tokens from the project's **Computers & tokens** page in Framework Cloud, and keep `.env` excluded from Git. Stata resolves the server URL from `FW_CLOUD_URL` in `.env`, then the process environment, then the saved login server. With none set, publishing stops rather than use `https://framework.pub`.
+Issue project tokens from the project's **Computers & tokens** page in Framework Cloud, and keep `.env` excluded from Git. Stata resolves the server URL from `FW_CLOUD_URL` in `.env`, then the process environment, then the saved login server. When `.env` has `FW_PROJECT_TOKEN` but no `FW_CLOUD_URL`, publishing stops instead of using the saved login. Add `FW_CLOUD_URL` to `.env`. With no server set, publishing stops rather than use `https://framework.pub`.
 
 HTML files with a companion `<name>_files` directory upload as a single ZIP bundle.
 

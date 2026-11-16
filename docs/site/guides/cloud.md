@@ -26,7 +26,7 @@ fw_login, nobrowser
 
 Pass `url()` to connect to a self-hosted Framework Cloud server. Stata records the server URL in `cloud.yml` inside the Framework configuration directory. Account commands (`fw_logout` and `fw_setup`) check `url()`, then `FW_CLOUD_URL`, then the newer `cloud.yml` written by `fw` or R. `fw_login` checks the same, then names `https://framework.pub` in its notice before connecting.
 
-Cloud publishing and integrity ledger updates read `FW_CLOUD_URL` from the project's `.env` file first, then the process environment, then the saved login server. When `fw`'s and R's `cloud.yml` name different servers, they stop and ask for `FW_CLOUD_URL` in `.env` rather than guess. `fw project link` writes `.env` automatically.
+Cloud publishing and integrity ledger updates read `FW_CLOUD_URL` from the project's `.env` file first, then the process environment, then the saved login server. A project whose `.env` has `FW_PROJECT_TOKEN` but no `FW_CLOUD_URL` never uses the saved login. The token belongs to one server, and `.env` does not name it, so these commands stop and ask for `FW_CLOUD_URL`. When `fw`'s and R's `cloud.yml` name different servers, projects without a token also stop rather than guess. `fw project link` writes `FW_PROJECT_TOKEN` and `FW_CLOUD_URL` to `.env`. Stata does not link projects itself.
 
 With nothing set, commands stop with an error. Stata never falls back to `https://framework.pub` except in `fw_login`.
 

@@ -429,7 +429,7 @@ entries:
         content: |
           When `to()` is omitted, `fw_publish` uses `publish.default` from `settings.yml`, defaulting to Framework Cloud. Named destinations are configured under `publish.destinations`. Because folder destinations require a target directory, bare `to(folder)` raises an error.
 
-          Stata handles `folder` and `cloud` destinations natively. GitHub Pages (`github`) and S3 (`s3`) use the `fw` CLI or `framework-py` backend; see `fw_set`. Cloud uploads authenticate with `FW_PROJECT_TOKEN` in `.env`.
+          Stata handles `folder` and `cloud` destinations natively. GitHub Pages (`github`) and S3 (`s3`) use the `fw` CLI or `framework-py` backend; see `fw_set`. Cloud uploads authenticate with `FW_PROJECT_TOKEN` in `.env`. The server is `FW_CLOUD_URL` in `.env`, then the environment, then the saved login. A `.env` with a token but no `FW_CLOUD_URL` stops with an error.
       - title: Estimation commands
         content: |
           `regress`, `logit`, `logistic`, `probit`, `poisson`, `nbreg`, `glm`, `mixed`, `stcox`, and `ivregress` map to typed Framework models with appropriate family, link, and ratio transformations. Other commands exposing `e(b)` and `e(V)` publish a generic coefficient table.

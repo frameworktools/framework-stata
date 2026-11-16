@@ -10,7 +10,7 @@ version 14
 mata:
 mata set matastrict off
 
-string scalar fw_version() return("0.3.1")
+string scalar fw_version() return("0.3.2")
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -1282,8 +1282,10 @@ string scalar fw__saved_conflict()
 
 // The Framework Cloud server, or "" with the reason in why. given (a url()
 // option) wins. Project calls (root given) then use the project's .env,
-// FW_CLOUD_URL, and the saved login; when fw's and R's saved logins differ
-// they stop rather than guess. User calls (root "") use FW_CLOUD_URL, then
+// FW_CLOUD_URL, and the saved login. A project whose .env has a token but no
+// FW_CLOUD_URL stops: the saved login may not be the server that issued the
+// token. When fw's and R's saved logins differ, project calls also stop
+// rather than guess. User calls (root "") use FW_CLOUD_URL, then
 // the saved login. Only fw_login (forlogin 1) falls back to framework.pub,
 // which its notice names: using the public cloud is the user's choice.
 // fw, R, and Python resolve the server the same way.
@@ -1294,6 +1296,10 @@ string scalar fw_cloud_resolve(string scalar root, string scalar given, real sca
     if (u == "" & root != "") u = fw_dotenv(root, "FW_CLOUD_URL")
     if (u == "") u = fw_env("FW_CLOUD_URL")
     if (u == "" & root != "") {
+        if (fw_dotenv(root, "FW_PROJECT_TOKEN") != "") {
+            why = "This project's .env has FW_PROJECT_TOKEN but no FW_CLOUD_URL, so it does not say which Framework Cloud server issued the token. Add FW_CLOUD_URL=<server> to .env."
+            return("")
+        }
         both = fw__saved_conflict()
         if (both != "") {
             why = "This project does not say which Framework Cloud server it uses: its .env has no FW_CLOUD_URL, and you are logged in to " +

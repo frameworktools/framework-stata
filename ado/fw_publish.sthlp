@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.3.1  16nov2026}{...}
+{* *! version 0.3.2  16nov2026}{...}
 {title:Title}
 
 {phang}
@@ -79,7 +79,10 @@ destination sets {bf:visibility}, {opt visibility()} must match it.
 {pstd}
 Stata publishes to folders and to Framework Cloud itself. GitHub Pages and S3
 need {bf:fw} or framework-py; see {helpb fw_set}. Framework Cloud uploads use the
-project token in the project's {bf:.env} file.
+project token in the project's {bf:.env} file. The server is {bf:FW_CLOUD_URL}
+in {bf:.env}, then the {bf:FW_CLOUD_URL} environment variable, then the saved
+login. A {bf:.env} with {bf:FW_PROJECT_TOKEN} but no {bf:FW_CLOUD_URL} stops with
+an error: the token belongs to one server, and the saved login may be another.
 
 {pstd}
 On Framework Cloud, {opt visibility()} sets who can open the artifact. Without

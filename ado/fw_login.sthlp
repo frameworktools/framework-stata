@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.3.1  16nov2026}{...}
+{* *! version 0.3.2  16nov2026}{...}
 {title:Title}
 
 {phang}
@@ -29,7 +29,8 @@ macros, or logs.
 
 {pstd}
 Publishing a project to Cloud uses the project token in its {bf:.env} file;
-{cmd:fw_login} connects the computer, not a project.
+{cmd:fw_login} connects the computer, not a project. A project with a token
+publishes to the {bf:FW_CLOUD_URL} in its {bf:.env}, never to the saved login.
 
 
 {title:Options}
