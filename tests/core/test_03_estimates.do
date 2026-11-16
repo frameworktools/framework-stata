@@ -167,8 +167,8 @@ capture noisily {
     t_eq "`r(v)'" "20"
     t_metric reml
     t_eq "`r(v)'" `"`=cond("`e(method)'" == "REML", "true", "false")'"'
-    * Compare with estat sd.
-    estat sd
+    * Compare with estat sd, which Stata 15 added.
+    if c(stata_version) >= 15 estat sd
     mixed y x || school:, reml
     t_model
     t_metric reml
@@ -275,7 +275,10 @@ t_begin estimates: tobit's variance goes in the ancillary table without a test
 capture noisily {
     sysuse auto, clear
     * Stata 15 and newer estimate var(e.mpg); version 14 estimates sigma.
-    foreach v in 14 15 17 {
+    local versions 14
+    if c(stata_version) >= 15 local versions `versions' 15
+    if c(stata_version) >= 17 local versions `versions' 17
+    foreach v of local versions {
         version `v': tobit mpg weight, ll(17)
         matrix T = r(table)
         matrix list e(b)

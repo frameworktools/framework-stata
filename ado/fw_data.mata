@@ -104,7 +104,7 @@ void fw_data_resolve(string scalar name_in, real scalar saving)
 // Paths compare without case where the file system ignores it.
 real scalar fw_samepath(string scalar a, string scalar b)
 {
-    if (fw_windows() | c("os") == "MacOSX") return(ustrlower(fw_norm(a)) == ustrlower(fw_norm(b)))
+    if (fw_windows() | fw_macos()) return(ustrlower(fw_norm(a)) == ustrlower(fw_norm(b)))
     return(fw_norm(a) == fw_norm(b))
 }
 

@@ -37,9 +37,15 @@ program define t_tmpdir, rclass
         if !_rc continue, break
         local ++i
     }
+    * The folder's real path, as c(pwd) reports it: on macOS the temporary
+    * directory is a symlink (/var to /private/var), and fw_project resolves it.
+    local here `"`c(pwd)'"'
+    quietly cd `"`base'_t`i'"'
+    local dir = subinstr(`"`c(pwd)'"', "\", "/", .)
+    quietly cd `"`here'"'
     * tests/run.do removes these folders at the end.
-    global T_TMPDIRS `"$T_TMPDIRS `"`base'_t`i'"'"'
-    return local dir `"`base'_t`i'"'
+    global T_TMPDIRS `"$T_TMPDIRS `"`dir'"'"'
+    return local dir `"`dir'"'
 end
 
 * Remove the folders t_tmpdir made, and any others given.

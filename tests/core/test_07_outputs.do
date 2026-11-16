@@ -152,16 +152,36 @@ capture noisily {
     mata: R = fw_result_get(st_local("s"), "outputs/public/tables/counts.csv")
     mata: assert(R[3] == "1")
     * Figures follow the same rule, with default folders.
-    sysuse auto, clear
-    scatter mpg price
-    fw_graph price-mpg, public
-    t_eq `"`r(path)'"' `"`s'/outputs/public/figures/price-mpg.png"'
+    if $T_RASTER {
+        sysuse auto, clear
+        scatter mpg price
+        fw_graph price-mpg, public
+        t_eq `"`r(path)'"' `"`s'/outputs/public/figures/price-mpg.png"'
+    }
 }
 local rc = _rc
 quietly cd `"`root'"'
 fw_project, quietly
 t_end `rc'
 
+if !$T_RASTER {
+    t_skip "outputs: fw_graph PNG export (this Stata session has no raster export)"
+    t_begin outputs: without raster export, fw_graph names the fix
+    capture noisily {
+        sysuse auto, clear
+        scatter mpg price
+        t_log_begin
+        capture noisily fw_graph "no-png"
+        local grc = _rc
+        t_log_end
+        assert `grc' == 111
+        t_log_has "Use format(eps)"
+        fw_graph "as-eps", format(eps)
+        confirm file `"`root'/outputs/figures/as-eps.eps"'
+    }
+    t_end `=_rc'
+}
+else {
 t_begin outputs: fw_graph exports the current graph and records it
 capture noisily {
     sysuse auto, clear
@@ -192,5 +212,6 @@ capture noisily {
     graph drop byweight
 }
 t_end `=_rc'
+}
 
 quietly cd `"$FW_TEST_REPO"'

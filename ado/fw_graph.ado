@@ -70,7 +70,17 @@ program define fw_graph, rclass
         local path `"`fw_stem'.`f'"'
         local opts `options'
         if `: list f in raster' local opts `opts' `size'
-        quietly graph export `"`path'"', replace `opts'
+        capture quietly graph export `"`path'"', replace `opts'
+        if _rc {
+            local rc = _rc
+            * Before Stata 15, batch mode has no PNG or other raster translator.
+            if `rc' == 111 & `: list f in raster' {
+                display as error "This Stata `c(stata_version)' session cannot write .`f' files. Stata 14 in batch mode has no raster export."
+                display as error "Use format(eps), or run the do-file from the Stata window."
+            }
+            else quietly graph export `"`path'"', replace `opts'
+            exit `rc'
+        }
         mata: fw_result_record(st_local("path"), "figure", "`public'" != "")
         if "`first_sha'" == "" local first_sha `"`fw_sha'"'
         local paths `"`paths' `"`path'"'"'

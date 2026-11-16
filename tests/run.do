@@ -5,7 +5,7 @@
 version 14
 clear all
 set more off
-set linesize 120
+set linesize 255
 
 local repo = subinstr(`"`c(pwd)'"', "\", "/", .)
 capture confirm file `"`repo'/ado/fw_core.mata"'
@@ -32,6 +32,20 @@ global T_SKIP 0
 global T_FAILED ""
 global T_TMPDIRS ""
 do `"`repo'/tests/harness.do"'
+* Whether this session can export PNG: Stata 14 in batch mode cannot.
+preserve
+quietly {
+    clear
+    set obs 2
+    generate x = _n
+    scatter x x
+    tempfile probe
+    capture graph export `"`probe'.png"', replace as(png)
+    global T_RASTER = _rc == 0
+    capture erase `"`probe'.png"'
+    graph drop _all
+}
+restore
 
 local files : dir `"`repo'/tests/core"' files "test_*.do"
 local files : list sort files

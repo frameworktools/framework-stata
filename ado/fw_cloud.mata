@@ -381,7 +381,7 @@ void fw__setup_tools()
     if (ok) printf("{txt}  SHA-256         {res}%s{txt}\n", tool)
     else printf("{txt}  SHA-256         {err}not available{txt}\n")
     if (fw_windows()) ring = "Windows Credential Manager"
-    else if (c("os") == "MacOSX") ring = "macOS Keychain (security)"
+    else if (fw_macos()) ring = "macOS Keychain (security)"
     else {
         // Ask the Cloud script, so fw_setup and fw_login agree on the keyring.
         rc = fw_cloud_call(("keyring"), d, 60)

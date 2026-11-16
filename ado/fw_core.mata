@@ -32,6 +32,9 @@ string scalar fw_shq(string scalar s)
 
 real scalar fw_windows() return(c("os") == "Windows")
 
+// Console and batch Stata on a Mac report c(os) "Unix", so look for macOS itself.
+real scalar fw_macos() return(c("os") == "MacOSX" | (c("os") == "Unix" & direxists("/System/Library/CoreServices")))
+
 real scalar fw_startswith(string scalar s, string scalar p)
     return(substr(s, 1, strlen(p)) == p)
 
@@ -1225,7 +1228,7 @@ string scalar fw_r_config_dir()
             if (base == "") base = fw_home() + "/AppData/Roaming"
             base = base + "/R/config"
         }
-        else if (c("os") == "MacOSX") base = fw_home() + "/Library/Preferences/org.R-project.R"
+        else if (fw_macos()) base = fw_home() + "/Library/Preferences/org.R-project.R"
         else base = fw_home() + "/.config"
     }
     return(fw_abs(base + "/R/framework"))

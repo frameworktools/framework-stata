@@ -58,14 +58,19 @@ t_begin cloud: fw_login completes the browser approval flow
 capture noisily {
     fw_login, url(http://127.0.0.1:`port') nobrowser
     t_eq `"`r(account)'"' "Test User"
-    t_eq `"`r(stored)'"' "file"
+    * macOS stores the token in the Keychain; elsewhere, a file unless keyring is set up
+    local stored `"`r(stored)'"'
+    mata: st_local("mac", strofreal(fw_macos()))
+    t_eq `"`stored'"' `"`=cond(`mac', "keyring", "file")'"'
     local cfg : environment FW_CONFIG_HOME
-    confirm file `"`cfg'/cloud-token-127.0.0.1_`port'"'
     confirm file `"`cfg'/cloud.yml"'
-    * The token file is private to the user.
-    tempfile perm
-    shell stat -c %a "`cfg'/cloud-token-127.0.0.1_`port'" > "`perm'"
-    mata: assert(fw_clean(fw_readfile(st_local("perm"))) == "600")
+    * Without a keyring, the token file is private to the user.
+    if !`mac' {
+        confirm file `"`cfg'/cloud-token-127.0.0.1_`port'"'
+        tempfile perm
+        shell stat -c %a "`cfg'/cloud-token-127.0.0.1_`port'" > "`perm'"
+        mata: assert(fw_clean(fw_readfile(st_local("perm"))) == "600")
+    }
 }
 t_end `=_rc'
 
@@ -91,7 +96,8 @@ capture noisily {
     local tok = "fw_test_" + "user_token"
     t_log_lacks "`tok'"
     * The keyring line agrees with where fw_login stored the token.
-    if c(os) == "Unix" t_log_has "keyring         none"
+    mata: st_local("mac", strofreal(fw_macos()))
+    if c(os) == "Unix" & !`mac' t_log_has "keyring         none"
 }
 t_end `=_rc'
 
