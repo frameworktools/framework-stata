@@ -747,13 +747,13 @@ if c(stata_version) >= 16 {
     capture noisily {
         sysuse auto, clear
         set seed 20261118
-        bayes, nchains(2) mcmcsize(500) burnin(200): regress price mpg
+        version 16: bayes, nchains(2) mcmcsize(500) burnin(200): regress price mpg
         t_model
         t_metric chains
         t_eq "`r(v)'" "2"
         t_metric draws
         t_eq "`r(v)'" "1000"
-        quietly bayesstats grubin
+        version 16: quietly bayesstats grubin
         matrix R = r(Rc)
         t_cell 0 0 rhat
         assert reldif(real("`r(v)'"), R[1, 1]) < 1e-9

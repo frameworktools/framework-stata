@@ -823,7 +823,8 @@ real rowvector fw__bayes_rhat(string matrix cs, real scalar nchains)
 {
     out = J(1, rows(cs), .)
     if (nchains < 2 | c("stata_version") < 16) return(out)
-    if (_stata("quietly bayesstats grubin", 1)) return(out)
+    // The package runs under version 14, which hides multi-chain results; this only runs on 16+
+    if (_stata("version 16: quietly bayesstats grubin", 1)) return(out)
     R = st_matrix("r(Rc)")
     if (rows(R) == 0) return(out)
     xs = (rows(R) == 1 ? st_matrixcolstripe("r(Rc)") : st_matrixrowstripe("r(Rc)"))
@@ -1084,14 +1085,14 @@ string scalar fw__bayes_json(real scalar level_in)
     pt = fw__bayes_priors(prefix)
     if (pt != "") tables = tables, pt
 
-    // Metrics. Stata reports the sample size and burn-in per chain.
+    // Metrics. Stata's e(mcmcsize) already counts every chain; e(burnin) is per chain.
     M = J(1, 0, "")
     fw__addnum(M, "nobs", fw_e("N"))
     fw__addnum(M, "confidence_level", level / 100)
     M = M, fw__metric("interval_method", fw_json_str(hpd ? "HDI" : "Equal-tailed"))
     fw__addnum(M, "chains", nch)
     mcmc = fw_e("mcmcsize")
-    if (mcmc < .) fw__addnum(M, "draws", mcmc * nch)
+    if (mcmc < .) fw__addnum(M, "draws", mcmc)
     fw__addnum(M, "warmup", fw_e("burnin"))
     th = fw_e("thinning")
     if (th < . & th > 1) M = M, fw__metric("thinning", fw_json_num(th), "Thinning interval")
