@@ -186,6 +186,8 @@ Files whose resolved path contains `private` require confirmation. Interactive S
 
 Other estimation commands exposing `e(b)` and `e(V)` publish a generic coefficient table. Estimates remain on the linear predictor scale, `_cons` maps to `(Intercept)`, and base or omitted factor levels are excluded. `mixed` supports independent, identity, exchangeable, and unstructured covariance structures.
 
+The model also lists its variables, summarized over the estimation sample `e(sample)`: the response, predictors, `mixed` and `me` grouping variables, weights, and offsets. Each entry has the variable label, a type, value-labeled levels and the base level for factor variables, and counts, means, quantiles, or the most common values. A `terms` list maps each coefficient, such as `1.foreign#c.mpg`, to its variables and levels. Framework Cloud shows these as tips on the coefficient terms. Raw rows are never included. Without the estimation data in memory, such as after `estimates use`, the model publishes without them.
+
 ## Framework Cloud
 
 ```stata

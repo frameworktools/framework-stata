@@ -191,6 +191,7 @@ string scalar fw_model_json(real scalar level)
     // become the alpha and delta metrics, as R and Python report theta.
     rowsj = J(1, 0, "")
     ancj = J(1, 0, "")
+    termj = J(1, 0, .)
     for (j = 1; j <= k; j++) {
         eq = cs[j, 1]
         nm = cs[j, 2]
@@ -223,6 +224,7 @@ string scalar fw_model_json(real scalar level)
         }
         rowsj = rowsj, "[" + fw_json_str(term) + "," + fw_json_num(est) + "," + fw_json_num(s) + "," +
             fw_json_num(stat) + "," + fw_json_num(p) + "," + fw_json_num(lo) + "," + fw_json_num(hi) + "]"
+        if (nm != "_cons") termj = termj, j
     }
     coefcols = fw__columns(("term", "estimate", "std_error", "statistic", "p_value", "conf_low", "conf_high"),
         ("string", "number", "number", "number", "number", "number", "number"))
@@ -310,9 +312,289 @@ string scalar fw_model_json(real scalar level)
         fw_json_str("class") + ":[" + classes + "]}," +
         fw_json_str("model") + ":" + mb + "," +
         fw_json_str("tables") + ":[" + invtokens(tables, ",") + "]," +
-        fw_json_str("metrics") + ":[" + invtokens(M, ",") + "]}"
+        fw_json_str("metrics") + ":[" + invtokens(M, ",") + "]" +
+        fw__model_variables(cmd, b, cs, main, termj) + "}"
     st_local("fw_known", strofreal(known))
     st_local("fw_cmd", cmd)
+    return(s)
+}
+
+// ---------------------------------------------------------------------------
+// Model variables: the variables behind the model and its coefficient terms,
+// summarized over the estimation sample e(sample). Never raw rows.
+// ---------------------------------------------------------------------------
+
+// One factor of a coefficient name, such as mpg, c.mpg, 1.foreign, 0b.foreign,
+// or L.gdp. Sets vname, level ("" for a continuous part), base (a b marker),
+// and omitted (an o marker). Returns 0 for a part it cannot read.
+real scalar fw__term_part(string scalar part, string scalar vname, string scalar level,
+    real scalar base, real scalar omitted)
+{
+    vname = ""; level = ""; base = 0; omitted = 0
+    vals = J(0, 1, .); counts = J(0, 1, .)
+    t = tokens(part, ".")
+    if (cols(t) == 0) return(0)
+    vname = t[cols(t)]
+    if (vname == "." | !st_isname(vname)) return(0)
+    for (i = 1; i < cols(t); i++) {
+        op = t[i]
+        if (op == ".") continue
+        if (regexm(op, "^([0-9]+)([bno]*)$")) {
+            if (level != "") return(0)
+            level = regexs(1)
+            flags = regexs(2)
+            base = (strpos(flags, "b") & !strpos(flags, "n"))
+            if (strpos(flags, "o")) omitted = 1
+        }
+        else if (op == "c" | op == "co") {
+            if (op == "co") omitted = 1
+        }
+        else if (op == "o") omitted = 1
+        // Time-series operators map to the variable they act on.
+        else if (!regexm(op, "^([LFDS][0-9]*)+$")) return(0)
+    }
+    return(1)
+}
+
+// A value as text: its value label when it has one, else the number.
+string scalar fw__level_text(string scalar vname, real scalar x)
+{
+    lab = st_varvaluelabel(vname)
+    if (lab != "") {
+        if (st_vlexists(lab)) {
+            s = st_vlmap(lab, x)
+            if (s != "") return(s)
+        }
+    }
+    return(fw_json_num(x))
+}
+
+// Add a variable once, keeping its first role. fac marks a factor variable.
+void fw__var_add(string rowvector names, string rowvector roles, real rowvector facs,
+    string scalar vname, string scalar role, real scalar fac)
+{
+    for (i = 1; i <= cols(names); i++) {
+        if (names[i] == vname) {
+            facs[i] = facs[i] | fac
+            return
+        }
+    }
+    names = names, vname
+    roles = roles, role
+    facs = facs, fac
+}
+
+// Linear-interpolation quantile of sorted values, as table summaries use.
+real scalar fw__quantile(real colvector s, real scalar p)
+{
+    n = rows(s)
+    h = (n - 1) * p
+    lo = floor(h)
+    hi = min((lo + 1, n - 1))
+    return(s[lo + 1] + (h - lo) * (s[hi + 1] - s[lo + 1]))
+}
+
+// A summary number. A float variable holds about seven significant digits,
+// so its values print with no more than that.
+string scalar fw__summary_num(real scalar x, real scalar isfloat)
+{
+    if (!isfloat | missing(x) | x == floor(x)) return(fw_json_num(x))
+    s = strtrim(strofreal(x, "%15.7g"))
+    if (fw_startswith(s, ".")) s = "0" + s
+    if (fw_startswith(s, "-.")) s = "-0" + substr(s, 2, .)
+    return(s)
+}
+
+// The summary object for one variable over the sample. For a categorical
+// variable, vals and counts return its distinct values and their counts.
+string scalar fw__var_summary(string scalar vname, string scalar touse, real scalar categorical,
+    real colvector vals, real colvector counts)
+{
+    x = st_data(., vname, touse)
+    n = rows(x)
+    present = select(x, x :< .)
+    m = rows(present)
+    vals = J(0, 1, .)
+    counts = J(0, 1, .)
+    if (m) {
+        srt = sort(present, 1)
+        starts = 1
+        if (m > 1) starts = 1 \ select((2::m), srt[|2 \ m|] :!= srt[|1 \ m - 1|])
+        vals = srt[starts]
+        k = rows(starts)
+        ends = m + 1
+        if (k > 1) ends = starts[|2 \ k|] \ m + 1
+        counts = ends - starts
+    }
+    k = rows(vals)
+    s = "{" + fw_json_str("count") + ":" + fw_json_num(n) + "," + fw_json_str("missing") + ":" + fw_json_num(n - m) +
+        "," + fw_json_str("distinct") + ":" + fw_json_num(k)
+    if (!m) return(s + "}")
+    if (!categorical) {
+        fl = (st_vartype(vname) == "float")
+        s = s + "," + fw_json_str("mean") + ":" + fw__summary_num(mean(srt), fl)
+        if (m > 1) s = s + "," + fw_json_str("sd") + ":" + fw__summary_num(sqrt(variance(srt)), fl)
+        s = s + "," + fw_json_str("min") + ":" + fw__summary_num(srt[1], fl) +
+            "," + fw_json_str("q1") + ":" + fw__summary_num(fw__quantile(srt, .25), fl) +
+            "," + fw_json_str("median") + ":" + fw__summary_num(fw__quantile(srt, .5), fl) +
+            "," + fw_json_str("q3") + ":" + fw__summary_num(fw__quantile(srt, .75), fl) +
+            "," + fw_json_str("max") + ":" + fw__summary_num(srt[m], fl)
+        return(s + "}")
+    }
+    // The most common values, at most 8, when some value repeats.
+    if (k < m | m == 1) {
+        o = order((-counts, (1::k)), (1, 2))
+        top = J(1, 0, "")
+        for (i = 1; i <= min((8, k)); i++) {
+            top = top, "{" + fw_json_str("value") + ":" + fw_json_str(fw__level_text(vname, vals[o[i]])) + "," +
+                fw_json_str("count") + ":" + fw_json_num(counts[o[i]]) + "}"
+        }
+        s = s + "," + fw_json_str("top") + ":[" + invtokens(top, ",") + "]"
+    }
+    return(s + "}")
+}
+
+// The "variables" and "terms" fields, with a leading comma, or "" when the
+// estimation sample is unavailable, such as after estimates use.
+string scalar fw__model_variables(string scalar cmd, real rowvector b, string matrix cs,
+    string scalar main, real rowvector termj)
+{
+    if (st_nobs() == 0) return("")
+    names = J(1, 0, ""); roles = J(1, 0, ""); facs = J(1, 0, .)
+    vname = ""; level = ""; base = 0; omitted = 0
+    vals = J(0, 1, .); counts = J(0, 1, .)
+    bases = J(1, 0, ""); basevars = J(1, 0, "")
+
+    // Responses first; D.y maps to y.
+    dv = tokens(fw_es("depvar"))
+    for (i = 1; i <= cols(dv); i++) {
+        if (!fw__term_part(dv[i], vname, level, base, omitted) | level != "") continue
+        fw__var_add(names, roles, facs, vname, "response", 0)
+    }
+
+    // Base levels, from the b markers on any coefficient, main effects first.
+    for (pass = 1; pass <= 2; pass++) {
+        for (j = 1; j <= cols(b); j++) {
+            eq = cs[j, 1]
+            if (eq == "/" | fw__is_re_param(eq, cs[j, 2])) continue
+            pr = tokens(cs[j, 2], "#")
+            pr = select(pr, pr :!= "#")
+            if ((pass == 1) != (cols(pr) == 1)) continue
+            for (q = 1; q <= cols(pr); q++) {
+                if (!fw__term_part(pr[q], vname, level, base, omitted)) continue
+                if (!base | anyof(basevars, vname)) continue
+                basevars = basevars, vname
+                bases = bases, level
+            }
+        }
+    }
+
+    // Predictors and terms, from the coefficient table's own rows.
+    // Each term's parts as "variable:level" words; level is digits or empty.
+    tterm = J(1, 0, ""); tparts = J(1, 0, "")
+    for (t = 1; t <= cols(termj); t++) {
+        j = termj[t]
+        eq = cs[j, 1]
+        nm = cs[j, 2]
+        term = ((eq != "" & eq != main) ? eq + ": " + nm : nm)
+        pr = tokens(nm, "#")
+        pr = select(pr, pr :!= "#")
+        if (cols(pr) == 0 | cols(pr) > 10) continue
+        pv = J(1, cols(pr), ""); pl = J(1, cols(pr), "")
+        ok = 1
+        for (q = 1; q <= cols(pr); q++) {
+            if (!fw__term_part(pr[q], vname, level, base, omitted)) {
+                ok = 0
+                break
+            }
+            pv[q] = vname
+            pl[q] = vname + ":" + level
+        }
+        if (!ok) continue
+        for (q = 1; q <= cols(pr); q++) {
+            fw__var_add(names, roles, facs, pv[q], "predictor", !fw_endswith(pl[q], ":"))
+        }
+        tterm = tterm, term
+        tparts = tparts, invtokens(pl, " ")
+    }
+
+    // Grouping factors of multilevel models, then weights and offsets.
+    if (cmd == "mixed" | fw_startswith(cmd, "me")) {
+        iv = tokens(fw_es("ivars"))
+        for (i = 1; i <= cols(iv); i++) {
+            if (iv[i] != "_all" & st_isname(iv[i])) fw__var_add(names, roles, facs, iv[i], "group", 1)
+        }
+    }
+    w = strtrim(subinstr(fw_es("wexp"), "=", "", 1))
+    if (st_isname(w)) fw__var_add(names, roles, facs, w, "weight", 0)
+    off = strtrim(fw_es("offset"))
+    if (regexm(off, "^ln[(](.+)[)]$")) off = strtrim(regexs(1))
+    if (off != "" & st_isname(off)) fw__var_add(names, roles, facs, off, "offset", 0)
+
+    if (cols(names) == 0) return("")
+    touse = st_tempname()
+    if (_stata("quietly generate byte " + touse + " = e(sample)", 1)) return("")
+    nsample = sum(st_data(., touse))
+    if (nsample == 0) {
+        st_dropvar(touse)
+        return("")
+    }
+
+    V = J(1, 0, "")
+    kept = J(1, 0, "")
+    for (i = 1; i <= cols(names); i++) {
+        if (cols(V) == 100) break
+        vname = names[i]
+        if (_st_varindex(vname) >= .) continue
+        if (!st_isnumvar(vname)) continue
+        role = roles[i]
+        // A response is categorical when value-labeled or modeled as categories.
+        cat = facs[i] | role == "group" | (role == "response" & (st_varvaluelabel(vname) != "" |
+            anyof(("mlogit", "ologit", "oprobit", "mprobit"), cmd)))
+        summ = fw__var_summary(vname, touse, cat, vals, counts)
+        s = "{" + fw_json_str("name") + ":" + fw_json_str(vname) + "," + fw_json_str("role") + ":" + fw_json_str(role) +
+            "," + fw_json_str("type") + ":" + fw_json_str(cat ? "categorical" : "number")
+        lab = st_varlabel(vname)
+        if (lab != "") s = s + "," + fw_json_str("label") + ":" + fw_json_str(lab)
+        if (cat & role != "group" & rows(vals)) {
+            lv = J(1, min((50, rows(vals))), "")
+            for (l = 1; l <= cols(lv); l++) lv[l] = fw_json_str(fw__level_text(vname, vals[l]))
+            s = s + "," + fw_json_str("levels") + ":[" + invtokens(lv, ",") + "]"
+        }
+        if (cat & role == "predictor") {
+            for (l = 1; l <= cols(basevars); l++) {
+                if (basevars[l] == vname) {
+                    s = s + "," + fw_json_str("reference") + ":" + fw_json_str(fw__level_text(vname, strtoreal(bases[l])))
+                    break
+                }
+            }
+        }
+        V = V, s + "," + fw_json_str("summary") + ":" + summ + "}"
+        kept = kept, vname
+    }
+    st_dropvar(touse)
+    if (cols(V) == 0) return("")
+
+    // Terms whose variables are all listed, at most 500.
+    T = J(1, 0, "")
+    for (t = 1; t <= cols(tterm); t++) {
+        if (cols(T) == 500) break
+        pw = tokens(tparts[t])
+        P = J(1, 0, "")
+        for (q = 1; q <= cols(pw); q++) {
+            c = strpos(pw[q], ":")
+            vname = substr(pw[q], 1, c - 1)
+            level = substr(pw[q], c + 1, .)
+            if (!anyof(kept, vname)) break
+            p = "{" + fw_json_str("variable") + ":" + fw_json_str(vname)
+            if (level != "") p = p + "," + fw_json_str("level") + ":" + fw_json_str(fw__level_text(vname, strtoreal(level)))
+            P = P, p + "}"
+        }
+        if (cols(P) < cols(pw)) continue
+        T = T, "{" + fw_json_str("term") + ":" + fw_json_str(tterm[t]) + "," + fw_json_str("parts") + ":[" + invtokens(P, ",") + "]}"
+    }
+    s = "," + fw_json_str("variables") + ":[" + invtokens(V, ",") + "]"
+    if (cols(T)) s = s + "," + fw_json_str("terms") + ":[" + invtokens(T, ",") + "]"
     return(s)
 }
 

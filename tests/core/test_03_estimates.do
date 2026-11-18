@@ -317,3 +317,187 @@ capture noisily {
     assert _rc == 301
 }
 t_end `=_rc'
+
+t_begin estimates: variables and terms describe the estimation sample
+capture noisily {
+    sysuse auto, clear
+    regress price c.mpg##i.foreign i.rep78
+    t_model
+    * Response, then predictors in coefficient order.
+    t_get variables.#
+    t_eq "`r(v)'" "4"
+    t_get variables.0.name
+    t_eq "`r(v)'" "price"
+    t_get variables.0.role
+    t_eq "`r(v)'" "response"
+    t_get variables.0.type
+    t_eq "`r(v)'" "number"
+    t_get variables.0.label
+    t_eq "`r(v)'" "Price"
+    * Summaries cover e(sample): rep78 drops 5 cars.
+    quietly summarize price if e(sample), detail
+    local mean = r(mean)
+    local sd = r(sd)
+    local min = r(min)
+    local max = r(max)
+    t_get variables.0.summary.count
+    t_eq "`r(v)'" "69"
+    t_get variables.0.summary.missing
+    t_eq "`r(v)'" "0"
+    t_get variables.0.summary.mean
+    assert reldif(real("`r(v)'"), `mean') < 1e-12
+    t_get variables.0.summary.sd
+    assert reldif(real("`r(v)'"), `sd') < 1e-12
+    t_get variables.0.summary.min
+    t_eq "`r(v)'" "`min'"
+    t_get variables.0.summary.max
+    t_eq "`r(v)'" "`max'"
+    t_get variables.1.name
+    t_eq "`r(v)'" "mpg"
+    t_get variables.1.role
+    t_eq "`r(v)'" "predictor"
+    t_get variables.1.summary.median
+    t_eq "`r(v)'" "20"
+    * foreign: value labels as levels, the base level as reference.
+    t_get variables.2.name
+    t_eq "`r(v)'" "foreign"
+    t_get variables.2.type
+    t_eq "`r(v)'" "categorical"
+    t_get variables.2.levels.0
+    t_eq "`r(v)'" "Domestic"
+    t_get variables.2.levels.1
+    t_eq "`r(v)'" "Foreign"
+    t_get variables.2.reference
+    t_eq "`r(v)'" "Domestic"
+    t_get variables.2.summary.mean
+    t_eq "`r(v)'" ""
+    quietly count if e(sample) & foreign == 0
+    local ndom = r(N)
+    t_get variables.2.summary.top.0.value
+    t_eq "`r(v)'" "Domestic"
+    t_get variables.2.summary.top.0.count
+    t_eq "`r(v)'" "`ndom'"
+    * rep78 has no value label: levels are the numbers.
+    t_get variables.3.name
+    t_eq "`r(v)'" "rep78"
+    t_get variables.3.levels.#
+    t_eq "`r(v)'" "5"
+    t_get variables.3.reference
+    t_eq "`r(v)'" "1"
+    * Terms match the coefficient table; _cons has none.
+    t_get terms.#
+    t_eq "`r(v)'" "7"
+    t_get terms.0.term
+    t_eq "`r(v)'" "mpg"
+    t_get terms.0.parts.0.variable
+    t_eq "`r(v)'" "mpg"
+    t_get terms.0.parts.0.level
+    t_eq "`r(v)'" ""
+    t_get terms.1.term
+    t_eq "`r(v)'" "1.foreign"
+    t_get terms.1.parts.0.level
+    t_eq "`r(v)'" "Foreign"
+    t_get tables.0.rows.2.0
+    t_eq "`r(v)'" "1.foreign#c.mpg"
+    t_get terms.2.term
+    t_eq "`r(v)'" "1.foreign#c.mpg"
+    t_get terms.2.parts.#
+    t_eq "`r(v)'" "2"
+    t_get terms.2.parts.0.variable
+    t_eq "`r(v)'" "foreign"
+    t_get terms.2.parts.0.level
+    t_eq "`r(v)'" "Foreign"
+    t_get terms.2.parts.1.variable
+    t_eq "`r(v)'" "mpg"
+    t_get terms.3.parts.0.level
+    t_eq "`r(v)'" "2"
+    * The temporary sample marker is gone and the data unchanged.
+    assert c(changed) == 0
+    assert c(k) == 12
+}
+t_end `=_rc'
+
+t_begin estimates: variables for mixed groups, weights, offsets, and lags
+capture noisily {
+    webuse pig, clear
+    mixed weight week || id:
+    t_model
+    t_get variables.2.name
+    t_eq "`r(v)'" "id"
+    t_get variables.2.role
+    t_eq "`r(v)'" "group"
+    t_get variables.2.summary.distinct
+    t_eq "`r(v)'" "48"
+    t_get variables.2.levels.#
+    t_eq "`r(v)'" ""
+
+    sysuse auto, clear
+    regress price mpg [aweight = weight]
+    t_model
+    t_get variables.2.name
+    t_eq "`r(v)'" "weight"
+    t_get variables.2.role
+    t_eq "`r(v)'" "weight"
+
+    generate double miles = 1000 + _n
+    poisson rep78 mpg, exposure(miles)
+    t_model
+    t_get variables.2.name
+    t_eq "`r(v)'" "miles"
+    t_get variables.2.role
+    t_eq "`r(v)'" "offset"
+
+    * A labeled response is categorical, without a reference.
+    logit foreign mpg ib3.rep78
+    t_model
+    t_get variables.0.type
+    t_eq "`r(v)'" "categorical"
+    t_get variables.0.reference
+    t_eq "`r(v)'" ""
+    t_get variables.2.reference
+    t_eq "`r(v)'" "3"
+    t_get variables.2.levels.0
+    t_eq "`r(v)'" "3"
+
+    * Multi-equation terms carry the equation prefix.
+    mlogit rep78 mpg
+    t_model
+    t_get variables.0.type
+    t_eq "`r(v)'" "categorical"
+    mata: st_local("v", fw_get(J, "tables.0.rows.2.0"))
+    t_get terms.1.term
+    t_eq "`r(v)'" "`v'"
+    t_get terms.1.parts.0.variable
+    t_eq "`r(v)'" "mpg"
+
+    * Time-series operators map to the variable they act on.
+    clear
+    set obs 30
+    generate t = _n
+    tsset t
+    generate double y = sin(t) + t / 10
+    generate double x = cos(t)
+    regress y L.x
+    t_model
+    t_get terms.0.term
+    t_eq "`r(v)'" "L.x"
+    t_get terms.0.parts.0.variable
+    t_eq "`r(v)'" "x"
+}
+t_end `=_rc'
+
+t_begin estimates: no estimation data leaves out variables and terms
+capture noisily {
+    sysuse auto, clear
+    regress price mpg
+    estimates store fwvars
+    clear
+    estimates restore fwvars
+    t_model
+    t_get variables.#
+    t_eq "`r(v)'" ""
+    t_get terms.#
+    t_eq "`r(v)'" ""
+    estimates drop fwvars
+}
+t_end `=_rc'

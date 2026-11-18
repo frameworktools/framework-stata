@@ -55,6 +55,12 @@ model: a coefficient table with standard errors, test statistics, p-values,
 and confidence intervals, plus fit statistics. Framework Cloud and the offline
 reader show it like a model published from R or Python.
 
+{pstd}
+The model also summarizes the variables behind it over the estimation sample
+{cmd:e(sample)}, with labels, factor levels, and base levels, and maps each
+coefficient to its variables. Raw rows are never included. The data the model
+was fit on must be in memory; otherwise the model publishes without them.
+
 
 {title:Destinations}
 
