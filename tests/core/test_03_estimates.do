@@ -501,3 +501,265 @@ capture noisily {
     estimates drop fwvars
 }
 t_end `=_rc'
+
+* ---------------------------------------------------------------------------
+* Bayesian models. bayesmh runs on Stata 14; the bayes prefix needs Stata 15,
+* and R-hat from several chains needs Stata 16.
+* ---------------------------------------------------------------------------
+
+* A table column's value by name in row r. Returns r(v).
+mata:
+string scalar t_cell_value(transmorphic J, real scalar t, real scalar r, string scalar name)
+{
+    p = "tables." + strofreal(t)
+    n = strtoreal(fw_get(J, p + ".columns.#"))
+    for (i = 0; i < n; i++) {
+        if (fw_get(J, p + ".columns." + strofreal(i) + ".name") == name) {
+            return(fw_get(J, p + ".rows." + strofreal(r) + "." + strofreal(i)))
+        }
+    }
+    return("(no column)")
+}
+end
+
+capture program drop t_cell
+program define t_cell, rclass
+    args t r name
+    mata: st_local("v", t_cell_value(J, `t', `r', "`name'"))
+    return local v `"`v'"'
+end
+
+t_begin estimates: bayesmh logit publishes posterior summaries and odds ratios
+capture noisily {
+    sysuse auto, clear
+    set seed 20261118
+    bayesmh foreign mpg weight, likelihood(logit) prior({foreign:}, normal(0, 100)) ///
+        mcmcsize(1000) burnin(500)
+    matrix Mn = e(mean)
+    matrix Sd = e(sd)
+    matrix Cr = e(cri)
+    matrix Es = e(ess)
+    t_model
+    t_get model.inference
+    t_eq "`r(v)'" "bayesian"
+    t_get model.type
+    t_eq "`r(v)'" "glm"
+    t_get model.family
+    t_eq "`r(v)'" "binomial"
+    t_get model.link
+    t_eq "`r(v)'" "logit"
+    t_get model.response
+    t_eq "`r(v)'" "foreign"
+    t_get model.exponentiate
+    t_eq "`r(v)'" "Odds ratio"
+    t_get source.class.0
+    t_eq "`r(v)'" "bayesmh"
+    t_get tables.0.role
+    t_eq "`r(v)'" "coefficients"
+    t_get tables.0.row_count
+    t_eq "`r(v)'" "3"
+    t_cell 0 0 term
+    t_eq "`r(v)'" "mpg"
+    t_cell 0 2 term
+    t_eq "`r(v)'" "(Intercept)"
+    t_cell 0 0 estimate
+    assert reldif(real("`r(v)'"), Mn[1, 1]) < 1e-12
+    t_cell 0 0 std_error
+    assert reldif(real("`r(v)'"), Sd[1, 1]) < 1e-12
+    t_cell 0 0 conf_low
+    assert reldif(real("`r(v)'"), Cr[1, 1]) < 1e-12
+    t_cell 0 0 conf_high
+    assert reldif(real("`r(v)'"), Cr[2, 1]) < 1e-12
+    t_cell 0 1 ess_bulk
+    assert reldif(real("`r(v)'"), Es[1, 2]) < 1e-12
+    * No tests, no tail ESS, and no R-hat from one chain.
+    foreach c in p_value statistic ess_tail rhat {
+        t_cell 0 0 `c'
+        t_eq "`r(v)'" "(no column)"
+    }
+    * Ratios summarize the exponentiated draws.
+    t_cell 0 0 ratio_estimate
+    local or = real("`r(v)'")
+    t_cell 0 0 ratio_conf_low
+    local orlo = real("`r(v)'")
+    t_cell 0 0 ratio_std_error
+    local orsd = real("`r(v)'")
+    quietly bayesstats summary (exp({foreign:mpg}))
+    matrix S = r(summary)
+    assert reldif(`or', S[1, 1]) < 1e-12
+    assert reldif(`orsd', S[1, 2]) < 1e-12
+    assert reldif(`orlo', S[1, 5]) < 1e-12
+    assert abs(`or' - exp(Mn[1, 1])) > 1e-9
+    t_cell 0 2 ratio_estimate
+    t_eq "`r(v)'" ""
+    * Priors, as typed.
+    t_get tables.1.role
+    t_eq "`r(v)'" "priors"
+    t_get tables.1.rows.0.0
+    t_eq "`r(v)'" "{foreign:mpg weight _cons}"
+    t_get tables.1.rows.0.1
+    t_eq "`r(v)'" "normal(0, 100)"
+    t_get tables.1.rows.0.2
+    t_eq "`r(v)'" "user"
+    t_metric confidence_level
+    assert reldif(real("`r(v)'"), 0.95) < 1e-12
+    t_metric interval_method
+    t_eq "`r(v)'" "Equal-tailed"
+    t_metric chains
+    t_eq "`r(v)'" "1"
+    t_metric draws
+    t_eq "`r(v)'" "1000"
+    t_metric warmup
+    t_eq "`r(v)'" "500"
+    t_metric sampler
+    assert strpos("`r(v)'", "Metropolis") & !strpos("`r(v)'", "sampling")
+    t_metric acceptance_rate
+    assert reldif(real("`r(v)'"), e(arate)) < 1e-12
+    t_metric efficiency_min
+    assert reldif(real("`r(v)'"), e(eff_min)) < 1e-12
+    t_metric command
+    assert strpos(`"`r(v)'"', "bayesmh foreign mpg weight") == 1
+    t_metric aic
+    t_eq "`r(v)'" ""
+    * Variables and terms, as for frequentist models.
+    t_get variables.0.name
+    t_eq "`r(v)'" "foreign"
+    t_get variables.0.role
+    t_eq "`r(v)'" "response"
+    t_get terms.1.term
+    t_eq "`r(v)'" "weight"
+    t_get terms.#
+    t_eq "`r(v)'" "2"
+}
+t_end `=_rc'
+
+t_begin estimates: bayesmh normal regression with HPD intervals and a variance
+capture noisily {
+    sysuse auto, clear
+    set seed 20261118
+    bayesmh price mpg i.foreign, likelihood(normal({var})) prior({price:}, normal(0, 1e8)) ///
+        prior({var}, igamma(.01, .01)) block({var}) mcmcsize(500) burnin(200) hpd clevel(90)
+    matrix Cr = e(cri)
+    t_model
+    t_get model.type
+    t_eq "`r(v)'" "linear"
+    t_get model.exponentiate
+    t_eq "`r(v)'" ""
+    t_cell 0 0 ratio_estimate
+    t_eq "`r(v)'" "(no column)"
+    t_cell 0 1 term
+    t_eq "`r(v)'" "1.foreign"
+    t_cell 0 0 conf_low
+    assert reldif(real("`r(v)'"), Cr[1, 1]) < 1e-12
+    t_metric interval_method
+    t_eq "`r(v)'" "HDI"
+    t_metric confidence_level
+    assert reldif(real("`r(v)'"), 0.9) < 1e-12
+    * Scalar parameters go in their own table.
+    t_get tables.1.role
+    t_eq "`r(v)'" "parameters"
+    t_get tables.1.rows.0.0
+    t_eq "`r(v)'" "var"
+    t_get tables.2.row_count
+    t_eq "`r(v)'" "2"
+    t_get tables.2.rows.0.0
+    t_eq "`r(v)'" "{price:mpg 1.foreign _cons}"
+    t_get tables.2.rows.1.0
+    t_eq "`r(v)'" "{var}"
+    t_get tables.2.rows.1.1
+    t_eq "`r(v)'" "igamma(.01, .01)"
+    t_get terms.1.parts.0.level
+    t_eq "`r(v)'" "Foreign"
+    t_get variables.2.reference
+    t_eq "`r(v)'" "Domestic"
+    * level() other than the default recomputes the interval.
+    mata: J = fw_json_parse(fw_model_json(80))
+    quietly bayesstats summary {price:mpg}, clevel(80) hpd
+    matrix S = r(summary)
+    t_cell 0 0 conf_low
+    assert reldif(real("`r(v)'"), S[1, 5]) < 1e-12
+    t_metric confidence_level
+    assert reldif(real("`r(v)'"), 0.8) < 1e-12
+}
+t_end `=_rc'
+
+t_begin estimates: bayesmh ologit keeps cutpoints off the ratio scale
+capture noisily {
+    sysuse auto, clear
+    set seed 20261118
+    bayesmh rep78 mpg, likelihood(ologit) prior({rep78:}, normal(0, 100)) mcmcsize(500) burnin(200)
+    t_model
+    t_get model.type
+    t_eq "`r(v)'" "ordinal"
+    t_cell 0 0 term
+    t_eq "`r(v)'" "mpg"
+    t_cell 0 0 ratio_estimate
+    assert real("`r(v)'") > 0
+    t_cell 0 1 ratio_estimate
+    t_eq "`r(v)'" ""
+    t_get terms.#
+    t_eq "`r(v)'" "1"
+}
+t_end `=_rc'
+
+t_begin estimates: prior() options parse from the command line
+capture noisily {
+    mata: P = fw__prior_options("y x, likelihood(logit) prior({y:x z}, normal(0, 100)) noprior(1) prior({var} {s}, igamma(0.01, 0.01)) prior({y:_cons}, flat)")
+    mata: assert(rows(P) == 3)
+    mata: assert(P[1, 1] == "{y:x z}" & P[1, 2] == "normal(0, 100)")
+    mata: assert(P[2, 2] == "igamma(0.01, 0.01)" & P[3, 2] == "flat")
+    mata: assert(fw__prior_covers("{y:x z}", "y:z") & !fw__prior_covers("{y:x z}", "y:_cons"))
+    mata: assert(fw__prior_covers("{y:}", "y:_cons") & fw__prior_covers("{var} {s}", "s") & !fw__prior_covers("{y:}", "var"))
+    mata: assert(fw__prior_params(("y:x", "y:0b.f", "y:1.f", "y:_cons", "var")) == "{y:x 1.f _cons} {var}")
+}
+t_end `=_rc'
+
+if c(stata_version) >= 15 {
+    t_begin estimates: the bayes prefix names the model from the command it ran
+    capture noisily {
+        sysuse auto, clear
+        set seed 20261118
+        bayes, mcmcsize(500) burnin(200): logit foreign mpg
+        t_model
+        t_get source.class.0
+        t_eq "`r(v)'" "bayes"
+        t_get source.class.1
+        t_eq "`r(v)'" "logit"
+        t_get model.inference
+        t_eq "`r(v)'" "bayesian"
+        t_get model.link
+        t_eq "`r(v)'" "logit"
+        t_cell 0 0 term
+        t_eq "`r(v)'" "mpg"
+        t_cell 0 0 ratio_estimate
+        assert real("`r(v)'") > 0
+        t_get tables.1.role
+        t_eq "`r(v)'" "priors"
+        t_get tables.1.rows.0.2
+        t_eq "`r(v)'" "default"
+    }
+    t_end `=_rc'
+}
+else t_skip "estimates: the bayes prefix needs Stata 15"
+
+if c(stata_version) >= 16 {
+    t_begin estimates: several chains give R-hat
+    capture noisily {
+        sysuse auto, clear
+        set seed 20261118
+        bayes, nchains(2) mcmcsize(500) burnin(200): regress price mpg
+        t_model
+        t_metric chains
+        t_eq "`r(v)'" "2"
+        t_metric draws
+        t_eq "`r(v)'" "1000"
+        quietly bayesstats grubin
+        matrix R = r(Rc)
+        t_cell 0 0 rhat
+        assert reldif(real("`r(v)'"), R[1, 1]) < 1e-9
+        t_metric rhat_max
+        assert real("`r(v)'") >= 1
+    }
+    t_end `=_rc'
+}
+else t_skip "estimates: R-hat from several chains needs Stata 16"

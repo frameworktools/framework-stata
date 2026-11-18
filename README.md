@@ -188,6 +188,8 @@ Other estimation commands exposing `e(b)` and `e(V)` publish a generic coefficie
 
 The model also lists its variables, summarized over the estimation sample `e(sample)`: the response, predictors, `mixed` and `me` grouping variables, weights, and offsets. Each entry has the variable label, a type, value-labeled levels and the base level for factor variables, and counts, means, quantiles, or the most common values. A `terms` list maps each coefficient, such as `1.foreign#c.mpg`, to its variables and levels. Framework Cloud shows these as tips on the coefficient terms. Raw rows are never included. Without the estimation data in memory, such as after `estimates use`, the model publishes without them.
 
+Bayesian results from `bayesmh` and the `bayes` prefix (Stata 15 and newer) publish with `model.inference` set to `bayesian`. The coefficient table holds the posterior mean, posterior SD, and the credible interval at the level the model was fit with (`clevel()`, equal-tailed or HPD), plus the effective sample size. With two or more chains (Stata 16 and newer), it adds R-hat from `bayesstats grubin`. Odds and rate ratios summarize the exponentiated draws through `bayesstats summary`, never the exponent of the posterior mean. Scalar parameters such as `{var}` go in a Parameters table, and the priors go in a Priors table. Metrics include chains, draws, burn-in, the sampler, the acceptance rate, efficiency, and DIC. There are no test statistics or p-values. The simulation results must still be available, as for `bayesstats`.
+
 ## Framework Cloud
 
 ```stata

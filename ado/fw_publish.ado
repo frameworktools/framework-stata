@@ -46,9 +46,13 @@ program define fw_publish, rclass
         if "`estimates'" != "" {
             local cmd `"`e(cmd)'"'
             local dep : word 1 of `e(depvar)'
+            * bayesmh names the outcome e(depvars).
+            if "`dep'" == "" local dep : word 1 of `e(depvars)'
             * stcox stores e(cmd) cox and e(cmd2) stcox.
             if "`e(cmd2)'" == "stcox" local cmd stcox
             if "`cmd'" == "stcox" local dep "_t"
+            * Under the bayes prefix, e(cmd) is the command it ran, such as logit.
+            if "`e(prefix)'" == "bayes" local cmd "bayes-`cmd'"
             local stem = cond("`dep'" != "", "`cmd'-`dep'", "`cmd'")
             if "`stem'" == "" local stem model
             local file `"`scratch'/`stem'.json"'
@@ -72,7 +76,8 @@ program define fw_publish, rclass
             * The scratch model file is removed on return; r(file) names the saved copy.
             local rfile `"`savepath'"'
             if `"`kind'"' == "" local kind model
-            if `"`title'"' == "" local title = cond("`dep'" != "", "`cmd': `dep'", "`cmd'")
+            local tcmd : subinstr local cmd "bayes-" "bayes "
+            if `"`title'"' == "" local title = cond("`dep'" != "", "`tcmd': `dep'", "`tcmd'")
         }
         else {
             * A folder or a wildcard publishes as one artifact, as publish_dir() does.

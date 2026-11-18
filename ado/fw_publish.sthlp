@@ -61,6 +61,13 @@ The model also summarizes the variables behind it over the estimation sample
 coefficient to its variables. Raw rows are never included. The data the model
 was fit on must be in memory; otherwise the model publishes without them.
 
+{pstd}
+Results from {cmd:bayesmh} and the {cmd:bayes} prefix publish as a Bayesian
+model: posterior means, posterior standard deviations, credible intervals,
+effective sample sizes, and, with several chains in Stata 16 or newer, R-hat.
+Odds and rate ratios summarize the exponentiated draws. A Priors table lists
+the priors. There are no test statistics or p-values.
+
 
 {title:Destinations}
 
@@ -136,6 +143,9 @@ from a path with "private" in it need the same confirmation.
 {opt level(#)} sets the confidence level; the default is {cmd:c(level)}, 95
 unless changed with {cmd:set level}. {cmd:fw_publish} does not read the level
 of the estimation command; after {cmd:regress, level(90)}, give {cmd:level(90)}.
+Bayesian results keep the credible level they were fit with, unless
+{opt level()} gives another; then {cmd:bayesstats summary} recomputes the
+intervals.
 
 {phang}
 {opt saving(filename [, replace])} keeps a copy of the model document.

@@ -123,6 +123,7 @@ string scalar fw_model_json(real scalar level)
 {
     cmd = fw_es("cmd")
     if (cmd == "") fw_error("No estimation results found. Run an estimation command, such as regress, first.", 301)
+    if (fw__is_bayes()) return(fw__bayes_json(level))
     b = st_matrix("e(b)")
     V = st_matrix("e(V)")
     if (cols(b) == 0 | rows(V) == 0) fw_error(cmd + " left no coefficient vector e(b) and variance matrix e(V) to publish.", 301)
@@ -465,8 +466,8 @@ string scalar fw__model_variables(string scalar cmd, real rowvector b, string ma
     vals = J(0, 1, .); counts = J(0, 1, .)
     bases = J(1, 0, ""); basevars = J(1, 0, "")
 
-    // Responses first; D.y maps to y.
-    dv = tokens(fw_es("depvar"))
+    // Responses first; D.y maps to y. bayesmh names them e(depvars).
+    dv = tokens(fw_es("depvar") != "" ? fw_es("depvar") : fw_es("depvars"))
     for (i = 1; i <= cols(dv); i++) {
         if (!fw__term_part(dv[i], vname, level, base, omitted) | level != "") continue
         fw__var_add(names, roles, facs, vname, "response", 0)
@@ -707,6 +708,447 @@ void fw__mixed(real rowvector b, string matrix cs, string rowvector M, string ro
             ("string", "string", "number", "number", "number"))
     }
     tables = tables, fw__table("Random effects", "random_effects", cols_re, rows_re)
+}
+
+
+// ---------------------------------------------------------------------------
+// Bayesian models: bayesmh, and the bayes prefix (Stata 15 and newer).
+// Columns summarize the posterior draws: mean, SD, and credible interval.
+// Ratios summarize the exponentiated draws, through bayesstats summary.
+// ---------------------------------------------------------------------------
+
+real scalar fw__is_bayes() return(fw_es("cmd") == "bayesmh" | fw_es("prefix") == "bayes")
+
+// Type, family, and link from the command under bayes:, or bayesmh's likelihood.
+void fw__bayes_kind(string scalar cmd, string scalar lik, string scalar type,
+    string scalar family, string scalar link)
+{
+    type = "other"; family = ""; link = ""
+    c = (cmd == "bayesmh" ? "" : cmd)
+    l = strlower(lik)
+    if (c == "regress" | (c == "" & regexm(l, "^normal"))) {
+        type = "linear"; family = "gaussian"; link = "identity"
+    }
+    else if (anyof(("logit", "logistic"), c) | (c == "" & regexm(l, "^(logit|logistic|binlogit)"))) {
+        type = "glm"; family = "binomial"; link = "logit"
+    }
+    else if (c == "probit" | (c == "" & regexm(l, "^(probit|binprobit)"))) {
+        type = "glm"; family = "binomial"; link = "probit"
+    }
+    else if (c == "cloglog" | (c == "" & regexm(l, "^(cloglog|bincloglog)"))) {
+        type = "glm"; family = "binomial"; link = "cloglog"
+    }
+    else if (c == "poisson" | (c == "" & regexm(l, "^poisson"))) {
+        type = "glm"; family = "poisson"; link = "log"
+    }
+    else if (c == "nbreg") {
+        type = "glm"; family = "negative binomial"; link = "log"
+    }
+    else if (c == "glm") {
+        type = "glm"
+        family = fw__family(fw_es("varfunct") != "" ? fw_es("varfunct") : fw_es("varfuncf"))
+        link = fw__link(fw_es("linkt") != "" ? fw_es("linkt") : fw_es("linkf"))
+        if (family == "") type = "other"
+    }
+    else if (c == "ologit" | (c == "" & regexm(l, "^ologit"))) {
+        type = "ordinal"; link = "logit"
+    }
+    else if (c == "oprobit" | (c == "" & regexm(l, "^oprobit"))) {
+        type = "ordinal"; link = "probit"
+    }
+    else if (c == "mlogit") type = "multinomial"
+    else if (c == "mixed") {
+        type = "mixed"; family = "gaussian"; link = "identity"
+    }
+    else if (c == "melogit") {
+        type = "mixed"; family = "binomial"; link = "logit"
+    }
+    else if (c == "meprobit") {
+        type = "mixed"; family = "binomial"; link = "probit"
+    }
+    else if (c == "mepoisson") {
+        type = "mixed"; family = "poisson"; link = "log"
+    }
+    else if (c == "streg") type = "survival"
+}
+
+// A parameter as bayesstats names it: {eq:name}, or {name} for a scalar.
+string scalar fw__bayes_ref(string scalar eq, string scalar nm)
+{
+    return("{" + (eq == "" | eq == "/" ? "" : eq + ":") + nm + "}")
+}
+
+// Posterior summaries of parameters or of their exponents, one row per
+// reference: mean, SD, MCSE, median, lower, upper. No rows when bayesstats
+// cannot compute them, such as after the simulation file is gone.
+real matrix fw__bayes_summary(string rowvector refs, real scalar level, real scalar hpd,
+    real scalar expo)
+{
+    if (cols(refs) == 0) return(J(0, 6, .))
+    s = ""
+    for (i = 1; i <= cols(refs); i++) {
+        s = s + " (fw" + strofreal(i) + ": " + (expo ? "exp(" + refs[i] + ")" : refs[i]) + ")"
+    }
+    s = "quietly bayesstats summary" + s + ", clevel(" + strofreal(level) + ")" + (hpd ? " hpd" : "")
+    if (_stata(s, 1)) return(J(0, 6, .))
+    R = st_matrix("r(summary)")
+    if (rows(R) != cols(refs) | cols(R) < 6) return(J(0, 6, .))
+    return(R)
+}
+
+// One value per parameter, matched by eq:name against a stripe of the same
+// parameters; by position when the stripe does not name them.
+real rowvector fw__bayes_match(real matrix X, string matrix xs, string matrix cs)
+{
+    k = rows(cs)
+    out = J(1, k, .)
+    x = vec(X)'
+    if (cols(x) == 0) return(out)
+    for (j = 1; j <= k; j++) {
+        for (i = 1; i <= rows(xs); i++) {
+            if (xs[i, 2] == cs[j, 2] & (xs[i, 1] == cs[j, 1] |
+                (anyof(("", "_", "/"), xs[i, 1]) & anyof(("", "_", "/"), cs[j, 1])))) {
+                out[j] = x[i]
+                break
+            }
+        }
+    }
+    if (allof(out, .) & cols(x) == k) out = x
+    return(out)
+}
+
+// R-hat for each parameter from bayesstats grubin, which needs two or more
+// chains (Stata 16 and newer). Missing otherwise.
+real rowvector fw__bayes_rhat(string matrix cs, real scalar nchains)
+{
+    out = J(1, rows(cs), .)
+    if (nchains < 2 | c("stata_version") < 16) return(out)
+    if (_stata("quietly bayesstats grubin", 1)) return(out)
+    R = st_matrix("r(Rc)")
+    if (rows(R) == 0) return(out)
+    xs = (rows(R) == 1 ? st_matrixcolstripe("r(Rc)") : st_matrixrowstripe("r(Rc)"))
+    return(fw__bayes_match(R, xs, cs))
+}
+
+// Parameter references in a prior()'s first argument, such as {y:} or {y:x z} {var}.
+// Returns 1 when they cover eq:name (or a scalar name).
+real scalar fw__prior_covers(string scalar spec, string scalar tok)
+{
+    c = strpos(tok, ":")
+    teq = (c ? substr(tok, 1, c - 1) : "")
+    tnm = (c ? substr(tok, c + 1, .) : tok)
+    rest = spec
+    while (regexm(rest, "[{]([^}]*)[}]")) {
+        g = strtrim(regexs(1))
+        rest = substr(rest, strpos(rest, "}") + 1, .)
+        gc = strpos(g, ":")
+        if (gc) {
+            geq = strtrim(substr(g, 1, gc - 1))
+            gnm = tokens(substr(g, gc + 1, .))
+            if (geq == teq & (cols(gnm) == 0 | anyof(gnm, tnm))) return(1)
+        }
+        else if (teq == "" & anyof(tokens(g), tnm)) return(1)
+    }
+    return(0)
+}
+
+// The prior() options in a command line, as parameter-spec and distribution pairs.
+string matrix fw__prior_options(string scalar line)
+{
+    P = J(0, 2, "")
+    s = line
+    while (1) {
+        p = strpos(strlower(s), "prior(")
+        if (!p) break
+        // A word such as noprior( or hyperprior( is not the option.
+        if (p > 1 & regexm(substr(s, p - 1, 1), "[A-Za-z0-9_]")) {
+            s = substr(s, p + 6, .)
+            continue
+        }
+        s = substr(s, p + 6, .)
+        depth = 1; comma = 0; brace = 0
+        for (i = 1; i <= strlen(s); i++) {
+            ch = substr(s, i, 1)
+            if (ch == "{") brace++
+            else if (ch == "}") brace--
+            else if (ch == "(") depth++
+            else if (ch == ")") {
+                depth--
+                if (depth == 0) break
+            }
+            else if (ch == "," & depth == 1 & brace == 0 & !comma) comma = i
+        }
+        if (comma) P = P \ (strtrim(substr(s, 1, comma - 1)), strtrim(substr(s, comma + 1, i - comma - 1)))
+        s = substr(s, i + 1, .)
+    }
+    return(P)
+}
+
+// A list of parameters as Stata's model summary shows it: {y:x z _cons} {var}.
+// Base levels, which have no prior of their own, are left out.
+string scalar fw__prior_params(string rowvector toks)
+{
+    s = ""; cur = "."; names = ""
+    for (i = 1; i <= cols(toks); i++) {
+        t = toks[i]
+        c = strpos(t, ":")
+        eq = (c ? substr(t, 1, c - 1) : "")
+        nm = (c ? substr(t, c + 1, .) : t)
+        if (regexm(nm, "^[0-9]+b[.]") | regexm(nm, "(^|#)[0-9]+b[.]")) continue
+        if (eq == "" | eq != cur) {
+            if (names != "") s = s + (s != "" ? " " : "") + "{" + (cur != "" ? cur + ":" : "") + names + "}"
+            cur = eq; names = nm
+        }
+        else names = names + " " + nm
+    }
+    if (names != "") s = s + (s != "" ? " " : "") + "{" + (cur != "" ? cur + ":" : "") + names + "}"
+    return(s)
+}
+
+// The priors table: one row per e(prior#), with the distribution as typed in
+// prior() when the command line has it, else as Stata stores it.
+string scalar fw__bayes_priors(real scalar prefix)
+{
+    K = J(1, 0, "")
+    for (i = 1; i <= 200; i++) {
+        if (fw_es("prior" + strofreal(i)) == "") break
+        K = K, strofreal(i)
+    }
+    if (cols(K) == 0 & fw_es("prior") != "") K = ""
+    if (cols(K) == 0) return("")
+    P = fw__prior_options(fw_es("cmdline"))
+    used = J(rows(P), 1, 0)
+    rows_p = J(1, 0, "")
+    for (i = 1; i <= cols(K); i++) {
+        name = fw_es("prior" + K[i])
+        toks = tokens(fw_es("priorparams" + K[i]))
+        params = fw__prior_params(toks)
+        if (params == "") continue
+        // The first parameter that is not a base level picks the prior() option.
+        first = ""
+        for (t = 1; t <= cols(toks); t++) {
+            if (!regexm(toks[t], "(^|[:#])[0-9]+b[.]")) {
+                first = toks[t]
+                break
+            }
+        }
+        dist = ""; source = ""
+        for (o = 1; o <= rows(P); o++) {
+            if (used[o]) continue
+            d = strlower(P[o, 2])
+            ok = (fw_startswith(d, strlower(name)) | (name == "logdensity" | name == "density"))
+            if (ok & fw__prior_covers(P[o, 1], first)) {
+                used[o] = 1
+                dist = P[o, 2]
+                source = "user"
+                break
+            }
+        }
+        if (dist == "" & prefix) {
+            // The bayes prefix's defaults: normal(0, 10000) and igamma(0.01, 0.01).
+            if (name == "normal" & fw_e("priorsigma") < .) dist = "normal(0, " + strofreal(fw_e("priorsigma")^2, "%12.0g") + ")"
+            else if (name == "igamma" & fw_e("priorshape") < . & fw_e("priorscale") < .) {
+                dist = "igamma(" + strofreal(fw_e("priorshape"), "%12.0g") + ", " + strofreal(fw_e("priorscale"), "%12.0g") + ")"
+            }
+            if (dist != "") source = "default"
+        }
+        if (dist == "") dist = name
+        if (dist == "logdensity") dist = "log density"
+        r = "[" + fw_json_str(params) + "," + fw_json_str(dist)
+        rows_p = rows_p, r + "," + fw_json_strornull(source) + "]"
+    }
+    if (cols(rows_p) == 0) return("")
+    return(fw__table("Priors", "priors", fw__columns(("parameter", "prior", "source"),
+        ("string", "string", "string")), rows_p))
+}
+
+string scalar fw__bayes_json(real scalar level_in)
+{
+    prefix = (fw_es("prefix") == "bayes")
+    cmd = fw_es("cmd")
+    lik = fw_es("likelihood")
+    mean = st_matrix("e(mean)")
+    if (cols(mean) == 0) fw_error(cmd + " left no posterior means e(mean) to publish.", 301)
+    k = cols(mean)
+    sd = st_matrix("e(sd)")
+    // Stata 14 leaves the equation off e(mean)'s stripe for a single
+    // equation; e(sd) keeps it.
+    cs = (cols(sd) == k ? st_matrixcolstripe("e(sd)") : st_matrixcolstripe("e(mean)"))
+    cri = st_matrix("e(cri)")
+    ess = st_matrix("e(ess)")
+    clevel = fw_e("clevel")
+    if (missing(clevel)) clevel = 95
+    hpd = (fw_e("hpd") == 1)
+    // The credible level the model was fit with, unless level() asks for another.
+    level = (level_in == c("level") ? clevel : level_in)
+    nch = fw_e("nchains")
+    if (missing(nch) | nch < 1) nch = 1
+    dv = tokens(fw_es("depvar") != "" ? fw_es("depvar") : fw_es("depvars"))
+    response = (cols(dv) ? dv[1] : "")
+    type = ""; family = ""; link = ""
+    fw__bayes_kind(cmd, lik, type, family, link)
+    ex = fw__exponentiate(family, link)
+    if (type == "ordinal") ex = (link == "logit" ? "Odds ratio" : "")
+    if (type == "multinomial") ex = "Odds ratio"
+
+    // R-hat first: the bayesstats calls below replace r().
+    rhat = fw__bayes_rhat(cs, nch)
+
+    refs = J(1, k, "")
+    for (j = 1; j <= k; j++) refs[j] = fw__bayes_ref(cs[j, 1], cs[j, 2])
+    lo = J(1, k, .); hi = J(1, k, .)
+    if (level == clevel & cols(cri) == k & rows(cri) == 2 & cols(sd) == k) {
+        lo = cri[1, .]; hi = cri[2, .]
+    }
+    else {
+        S = fw__bayes_summary(refs, level, hpd, 0)
+        if (rows(S) == 0) fw_error("bayesstats summary could not compute " + strofreal(level) +
+            "% credible intervals. The simulation results may be gone; refit the model, or publish at level(" +
+            strofreal(clevel) + ").", 498)
+        mean = S[., 1]'; sd = S[., 2]'; lo = S[., 5]'; hi = S[., 6]'
+    }
+    if (cols(sd) != k) sd = J(1, k, .)
+    essv = (cols(ess) == k ? ess[1, .] : J(1, k, .))
+
+    // The main equation is the first with a name; scalar parameters such as
+    // {var} or {sigma2} go in their own table. Random effects such as
+    // {U0[id]} are left out, as Stata's own table leaves them out.
+    main = ""
+    for (j = 1; j <= k; j++) {
+        if (!anyof(("", "_", "/"), cs[j, 1])) {
+            main = cs[j, 1]
+            break
+        }
+    }
+    coefj = J(1, 0, .); ancj = J(1, 0, .); termj = J(1, 0, .); ratioj = J(1, 0, .)
+    terms = J(1, k, "")
+    for (j = 1; j <= k; j++) {
+        eq = cs[j, 1]
+        nm = cs[j, 2]
+        if (strpos(eq, "[") | strpos(nm, "[")) continue
+        if (anyof(("", "_", "/"), eq)) {
+            terms[j] = nm
+            ancj = ancj, j
+            continue
+        }
+        terms[j] = (nm == "_cons" ? "(Intercept)" : nm)
+        if (eq != main) terms[j] = eq + ": " + terms[j]
+        coefj = coefj, j
+        // Cutpoints, such as ologit's {y:_cut1}, are thresholds, not effects.
+        cut = regexm(nm, "^_?cut[0-9]+$")
+        if (nm != "_cons" & !cut) termj = termj, j
+        if (ex != "" & nm != "_cons" & !cut & (eq == main | type == "multinomial")) ratioj = ratioj, j
+    }
+
+    // Ratios from the exponentiated draws, never the exponent of the summaries.
+    ratio = J(k, 4, .)
+    hasratio = 0
+    if (cols(ratioj)) {
+        R = fw__bayes_summary(refs[ratioj], level, hpd, 1)
+        if (rows(R)) {
+            hasratio = 1
+            for (i = 1; i <= cols(ratioj); i++) ratio[ratioj[i], .] = (R[i, 1], R[i, 2], R[i, 5], R[i, 6])
+        }
+        else printf("{txt}Note: bayesstats could not summarize the exponentiated draws. The model publishes on the model scale only.\n")
+    }
+
+    names = ("term", "estimate", "std_error", "conf_low", "conf_high")
+    hasrhat = !allof(rhat, .)
+    hasess = !allof(essv, .)
+    if (hasrhat) names = names, "rhat"
+    if (hasess) names = names, "ess_bulk"
+    ancnames = names
+    if (hasratio) names = names, ("ratio_estimate", "ratio_std_error", "ratio_conf_low", "ratio_conf_high")
+    tables = J(1, 0, "")
+    for (pass = 1; pass <= 2; pass++) {
+        idx = (pass == 1 ? coefj : ancj)
+        if (pass == 2 & cols(idx) == 0) continue
+        rr = J(1, 0, "")
+        for (i = 1; i <= cols(idx); i++) {
+            j = idx[i]
+            r = "[" + fw_json_str(terms[j]) + "," + fw_json_num(mean[j]) + "," + fw_json_num(sd[j]) + "," +
+                fw_json_num(lo[j]) + "," + fw_json_num(hi[j])
+            if (hasrhat) r = r + "," + fw_json_num(rhat[j])
+            if (hasess) r = r + "," + fw_json_num(essv[j])
+            if (pass == 1 & hasratio) {
+                for (q = 1; q <= 4; q++) r = r + "," + fw_json_num(ratio[j, q])
+            }
+            rr = rr, r + "]"
+        }
+        nn = (pass == 1 ? names : ancnames)
+        tt = J(1, cols(nn), "number")
+        tt[1] = "string"
+        if (pass == 1) tables = tables, fw__table(type == "mixed" ? "Fixed effects" : "Coefficients", "coefficients", fw__columns(nn, tt), rr)
+        else tables = tables, fw__table("Parameters", "parameters", fw__columns(nn, tt), rr)
+    }
+    pt = fw__bayes_priors(prefix)
+    if (pt != "") tables = tables, pt
+
+    // Metrics. Stata reports the sample size and burn-in per chain.
+    M = J(1, 0, "")
+    fw__addnum(M, "nobs", fw_e("N"))
+    fw__addnum(M, "confidence_level", level / 100)
+    M = M, fw__metric("interval_method", fw_json_str(hpd ? "HDI" : "Equal-tailed"))
+    fw__addnum(M, "chains", nch)
+    mcmc = fw_e("mcmcsize")
+    if (mcmc < .) fw__addnum(M, "draws", mcmc * nch)
+    fw__addnum(M, "warmup", fw_e("burnin"))
+    th = fw_e("thinning")
+    if (th < . & th > 1) M = M, fw__metric("thinning", fw_json_num(th), "Thinning interval")
+    sampler = fw_es("method")
+    if (regexm(sampler, "^(.*[^ ]) +sampling$")) sampler = regexs(1)
+    fw__addstr(M, "sampler", sampler, "Sampler")
+    x = fw_e("arate")
+    if (x < .) M = M, fw__metric("acceptance_rate", fw_json_num(x), nch > 1 ? "Average acceptance rate" : "Acceptance rate")
+    x = fw_e("eff_min")
+    if (x < .) M = M, fw__metric("efficiency_min", fw_json_num(x), "Efficiency: minimum")
+    x = fw_e("eff_avg")
+    if (x < .) M = M, fw__metric("efficiency_avg", fw_json_num(x), "Efficiency: average")
+    x = fw_e("eff_max")
+    if (x < .) M = M, fw__metric("efficiency_max", fw_json_num(x), "Efficiency: maximum")
+    x = fw_e("Rc_max")
+    if (x < .) M = M, fw__metric("rhat_max", fw_json_num(x), "Maximum Gelman–Rubin Rc")
+    x = fw_e("dic")
+    if (x < .) M = M, fw__metric("dic", fw_json_num(x), "DIC")
+    x = fw_e("lml_lm")
+    if (x < .) M = M, fw__metric("log_marginal_likelihood", fw_json_num(x), "Log marginal likelihood")
+    line = fw_es("cmdline")
+    // bayesmh in Stata 14 stores the command line without the command.
+    if (!prefix & line != "" & !regexm(line, "^bayesmh( |,|$)")) line = "bayesmh " + line
+    fw__addstr(M, "command", line, "Command")
+
+    mb = "{" + fw_json_str("type") + ":" + fw_json_str(type)
+    if (family != "") mb = mb + "," + fw_json_str("family") + ":" + fw_json_str(family)
+    if (link != "") mb = mb + "," + fw_json_str("link") + ":" + fw_json_str(link)
+    if (response != "") mb = mb + "," + fw_json_str("response") + ":" + fw_json_str(response)
+    if (ex != "") mb = mb + "," + fw_json_str("exponentiate") + ":" + fw_json_str(ex)
+    mb = mb + "," + fw_json_str("inference") + ":" + fw_json_str("bayesian") + "}"
+
+    classes = fw_json_str(cmd)
+    if (prefix) classes = fw_json_str("bayes") + "," + classes
+
+    // Variables and terms. Base levels are in e(parnames), not e(mean).
+    csv = cs
+    pn = tokens(fw_es("parnames"))
+    for (i = 1; i <= cols(pn); i++) {
+        c = strpos(pn[i], ":")
+        if (!c) continue
+        if (!regexm(substr(pn[i], c + 1, .), "(^|#)[0-9]+b[.]")) continue
+        csv = csv \ (substr(pn[i], 1, c - 1), substr(pn[i], c + 1, .))
+    }
+    vcmd = (prefix ? cmd : (type == "ordinal" ? "ologit" : "bayesmh"))
+    vars = fw__model_variables(vcmd, J(1, rows(csv), 0), csv, main, termj)
+
+    s = "{" + fw_json_str("schema") + ":" + fw_json_str("framework.artifact/v1") + "," +
+        fw_json_str("kind") + ":" + fw_json_str("model") + "," +
+        fw_json_str("source") + ":{" + fw_json_str("language") + ":" + fw_json_str("stata") + "," +
+        fw_json_str("class") + ":[" + classes + "]}," +
+        fw_json_str("model") + ":" + mb + "," +
+        fw_json_str("tables") + ":[" + invtokens(tables, ",") + "]," +
+        fw_json_str("metrics") + ":[" + invtokens(M, ",") + "]" + vars + "}"
+    st_local("fw_known", strofreal(type != "other"))
+    st_local("fw_cmd", cmd)
+    return(s)
 }
 
 end
