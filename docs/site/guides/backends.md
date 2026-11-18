@@ -3,7 +3,7 @@ id: backends
 title: Backends
 description: CLI and Python backends for GitHub Pages and S3 publishing
 section: features
-position: 6
+position: 7
 ---
 
 ## Backend selection

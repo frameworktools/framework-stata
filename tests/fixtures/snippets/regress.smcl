@@ -1,0 +1,24 @@
+{smcl}
+{com}{sf}{ul off}{txt}
+{com}. regress price mpg i.foreign
+
+{txt}      Source {c |}       SS           df       MS      Number of obs   ={res}        74
+{txt}{hline 13}{c +}{hline 34}   F(2, 71)        = {res}    14.07
+{txt}       Model {c |} {res}  180261702         2  90130850.8   {txt}Prob > F        ={res}    0.0000
+{txt}    Residual {c |} {res}  454803695        71  6405685.84   {txt}R-squared       ={res}    0.2838
+{txt}{hline 13}{c +}{hline 34}   Adj R-squared   ={res}    0.2637
+{txt}       Total {c |} {res}  635065396        73  8699525.97   {txt}Root MSE        =   {res} 2530.9
+
+{txt}{hline 13}{c TT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{col 1}       price{col 14}{c |}      Coef.{col 26}   Std. Err.{col 38}      t{col 46}   P>|t|{col 54}     [95% Con{col 67}f. Interval]
+{hline 13}{c +}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{space 9}mpg {c |}{col 14}{res}{space 2}-294.1955{col 26}{space 2} 55.69172{col 37}{space 1}   -5.28{col 46}{space 3}0.000{col 54}{space 4}-405.2417{col 67}{space 3}-183.1494
+{txt}{space 12} {c |}
+{space 5}foreign {c |}
+{space 4}Foreign  {c |}{col 14}{res}{space 2} 1767.292{col 26}{space 2}  700.158{col 37}{space 1}    2.52{col 46}{space 3}0.014{col 54}{space 4} 371.2169{col 67}{space 3} 3163.368
+{txt}{space 7}_cons {c |}{col 14}{res}{space 2} 11905.42{col 26}{space 2} 1158.634{col 37}{space 1}   10.28{col 46}{space 3}0.000{col 54}{space 4} 9595.164{col 67}{space 3} 14215.67
+{txt}{hline 13}{c BT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{res}{txt}
+{com}. fw_snippet end, nopublish saving(`here'/scratch.json, replace)
+{res}{smcl}
+{res}{sf}{ul off}

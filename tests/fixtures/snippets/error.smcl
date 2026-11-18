@@ -1,0 +1,11 @@
+{smcl}
+{com}{sf}{ul off}{txt}
+{com}. capture noisily regress price nosuchvar
+{err}variable {bf}nosuchvar{sf} not found
+{txt}
+{com}. display "after the error"
+{res}after the error
+{txt}
+{com}. fw_snippet end, nopublish saving(`here'/scratch.json, replace)
+{res}{smcl}
+{res}{sf}{ul off}

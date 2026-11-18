@@ -3,7 +3,7 @@ id: packages
 title: Packages
 description: Project package lists and installation from SSC, GitHub, or net URLs
 section: features
-position: 7
+position: 8
 ---
 
 ## Package configuration

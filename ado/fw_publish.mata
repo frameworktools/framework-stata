@@ -461,7 +461,8 @@ void fw_track_external(string scalar root, string scalar bundle, string scalar m
 // ---------------------------------------------------------------------------
 
 // Upload one file, or an HTML page with its _files folder, to the project.
-// Sets locals fw_url, fw_version, fw_version_url, fw_notice, fw_id.
+// Sets locals fw_url, fw_version, fw_version_url, fw_notice, fw_id, and
+// fw_unchanged ("true" when Cloud kept the latest version of a code snippet).
 void fw_cloud_publish(string scalar root, string scalar src_in, string scalar slug, string scalar title,
     string scalar descr, string scalar kind, string scalar visibility)
 {
@@ -544,6 +545,7 @@ void fw_cloud_publish(string scalar root, string scalar src_in, string scalar sl
     st_local("fw_version_url", fw_get(J, "version_url"))
     st_local("fw_notice", fw_get(J, "notice"))
     st_local("fw_id", fw_get(J, "id"))
+    st_local("fw_unchanged", fw_get(J, "unchanged") == "true" ? "true" : "")
     // The slug Cloud stored, else the one sent.
     rslug = fw_get(J, "slug")
     st_local("fw_slug", rslug != "" ? rslug : fw_slug(name))

@@ -39,6 +39,7 @@ program define fw_publish, rclass
 
     local fw_isdir 0
     local fw_wild 0
+    local fw_unchanged
     mata: fw__publish_scratch = fw_scratch()
     mata: st_local("scratch", fw__publish_scratch)
     capture noisily {
@@ -184,6 +185,9 @@ program define fw_publish, rclass
                 if "`backend'" == "cli" mata: fw_dir_index(st_local("file"))
             }
             if `fw_isdir' local include_private 1
+            * fw and framework-py may not know the code_snippet kind yet.
+            * Cloud reads it from the file, so they send none.
+            if "`kind'" == "code_snippet" local kind
             mata: st_local("fw_slug", fw_default_slug(st_local("file"), st_local("slug")))
             local dest `"`to'"'
             if "`backend'" == "cli" {
@@ -213,7 +217,9 @@ program define fw_publish, rclass
     local where `"`fw_url'"'
     if `"`where'"' == "" local where `"`fw_location'"'
     local vtext = cond("`fw_version'" != "", " (version `fw_version')", "")
-    display as text `"Published to `fw_dest'`vtext': "' _c
+    * Cloud adds no version for a code snippet that has not changed.
+    if "`fw_unchanged'" == "true" display as text `"Unchanged, still version `fw_version': "' _c
+    else display as text `"Published to `fw_dest'`vtext': "' _c
     if regexm(`"`where'"', "^https?://") display as result `"{browse "`where'"}"'
     else display as result `"`where'"'
     if `"`fw_notice'"' != "" display as text `"`fw_notice'"'
@@ -221,6 +227,7 @@ program define fw_publish, rclass
     return local location `"`fw_location'"'
     return local version `"`fw_version'"'
     return local version_url `"`fw_version_url'"'
+    return scalar unchanged = ("`fw_unchanged'" == "true")
     return local destination `"`fw_dest'"'
     return local driver `"`fw_driver'"'
     return local backend `"`backend'"'

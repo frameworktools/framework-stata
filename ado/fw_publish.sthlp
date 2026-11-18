@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.3.4  18nov2026}{...}
+{* *! version 0.3.5  18nov2026}{...}
 {title:Title}
 
 {phang}
@@ -27,7 +27,7 @@
 {synopt:{opt vis:ibility(string)}}{bf:public}, {bf:unlisted}, or {bf:private}{p_end}
 {synopt:{opt priv:ate}}short for {cmd:visibility(private)}{p_end}
 {synopt:{opt includepriv:ate}}confirm files with "private" in their path{p_end}
-{synopt:{opt kind(string)}}override the detected kind, such as {bf:image} or {bf:html}{p_end}
+{synopt:{opt kind(string)}}override the detected kind, such as {bf:image}, {bf:html}, or {bf:code_snippet}{p_end}
 {synoptline}
 
 
@@ -168,6 +168,7 @@ intervals.
 {p2col:{cmd:r(location)}}the published folder, for folder destinations{p_end}
 {p2col:{cmd:r(version)}}the version number{p_end}
 {p2col:{cmd:r(version_url)}}the link to this version, when the destination has one{p_end}
+{p2col:{cmd:r(unchanged)}}1 when Framework Cloud kept the latest version of an unchanged code snippet, else 0{p_end}
 {p2col:{cmd:r(destination)}}the destination name{p_end}
 {p2col:{cmd:r(driver)}}cloud, folder, github, or s3{p_end}
 {p2col:{cmd:r(backend)}}core, cli, or python{p_end}

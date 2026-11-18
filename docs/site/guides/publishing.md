@@ -28,7 +28,7 @@ Artifact kind is inferred from the file extension: `.png`, `.jpg`, `.svg`, `.gif
 | `includeprivate` | Confirms publishing from paths containing `private` |
 | `kind()` | Explicit artifact kind override |
 
-For model publishing with `fw_publish, estimates`, see [Estimation results](guide:estimates).
+For model publishing with `fw_publish, estimates`, see [Estimation results](guide:estimates). For commands and their printed output, see [Code snippets](guide:snippets).
 
 ## Directory and wildcard bundles
 
@@ -116,6 +116,7 @@ R, Python, and `fw` enforce the same check. Framework never uploads files withou
 | `r(location)` | Output directory path for `folder` destinations |
 | `r(version)` | Published version number |
 | `r(version_url)` | Version-specific URL |
+| `r(unchanged)` | `1` when Cloud kept the latest version of an unchanged code snippet |
 | `r(destination)` | Destination name |
 | `r(driver)` | `cloud`, `folder`, `github`, or `s3` |
 | `r(backend)` | `core`, `cli`, or `python` |

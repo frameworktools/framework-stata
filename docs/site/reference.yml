@@ -21,9 +21,9 @@ categories:
     common: [fw_table, fw_graph]
   - id: publishing
     title: Publishing
-    description: File, bundle, and estimation artifacts
+    description: File, bundle, estimation, and code snippet artifacts
     position: 4
-    common: [fw_publish]
+    common: [fw_publish, fw_snippet]
   - id: cloud
     title: Cloud
     description: Framework Cloud authentication
@@ -460,7 +460,7 @@ entries:
       - name: includeprivate
         description: Confirms publishing files or estimation datasets from paths containing `private`.
       - name: kind(string)
-        description: Overrides inferred artifact kind (`image`, `html`, or `file`).
+        description: Overrides inferred artifact kind (`image`, `html`, `file`, or `code_snippet`).
       - name: level(#)
         default: c(level)
         description: Confidence level for `estimates` (defaults to `c(level)`, typically 95). Estimation command display flags are not inherited automatically.
@@ -471,6 +471,7 @@ entries:
       - `r(location)`: output directory for `folder` destinations
       - `r(version)`: published version number
       - `r(version_url)`: version-specific URL
+      - `r(unchanged)`: `1` when Cloud kept the latest version of an unchanged code snippet, else `0`
       - `r(destination)`: destination name
       - `r(driver)`: `cloud`, `folder`, `github`, or `s3`
       - `r(backend)`: `core`, `cli`, or `python`
@@ -492,6 +493,85 @@ entries:
           fw_publish, estimates slug(price-model) to(lab)
         runnable: false
     see_also: [fw_set, "guide:publishing", "guide:estimates"]
+
+  - id: fw_snippet
+    name: fw_snippet
+    kind: command
+    category: publishing
+    summary: Publish commands and the output they printed as a code snippet
+    usage: |
+      fw_snippet begin label
+      fw_snippet end [, options]
+    description: |
+      `fw_snippet` publishes a `code_snippet` artifact: the commands run between `fw_snippet begin` and `fw_snippet end`, and the text Stata printed under them. Blog posts and reports embed snippets beside the results they produced.
+
+      `fw_snippet begin` opens an SMCL log named `fw_snippet` alongside any user log. `fw_snippet end` closes it, splits it at Stata's command echo, and publishes the result through `fw_publish`. Each command becomes a code block without its `.` prompt, with `///` continuation lines kept. The SMCL between commands becomes an output block, sent unchanged. Framework Cloud renders the SMCL with Stata's column layout, box characters, and result styles, and marks output that starts with an `{err}` message as an error. Commands that print nothing share a code block with the next command. The `fw_snippet end` line is excluded.
+    details: |
+      The snippet records `source.file` (the do-file, relative to the project root), `source.lines` (the lines between `begin` and `end`), and `source.commit` (git `HEAD` of the project). Stata does not expose the running do-file, so `fw_snippet end` searches the project's do-files for `fw_snippet begin` *label*. When several do-files match, the file is omitted; `file()` names it. `source.repository` is sent only when `repository()` or `publish.repository` in `settings.yml` sets it. Cloud builds a GitHub permalink from the repository, commit, file, and lines.
+
+      `snippet.width` is `c(linesize)`. Graphs never enter a snippet. Commands that Stata does not echo, such as those run with `quietly do` or inside a `quietly {` block, are absent from the code.
+
+      An unchanged snippet adds no version on Framework Cloud. The upload returns the current version with `unchanged: true`, and `fw_snippet end` reports "Unchanged, still version *#*".
+    sections:
+      - title: Errors and recovery
+        content: |
+          Snippets do not nest: `fw_snippet begin` with a snippet open stops with error 198 and leaves the open snippet recording. When a do-file stopped with an error inside a snippet, the next `fw_snippet begin` closes the stale log. `log close fw_snippet` discards an open snippet.
+
+          `fw_snippet end` validates its options before closing the log, so a mistyped option leaves the snippet open. When publishing fails, the snippet JSON stays in a temporary folder and the error names the `fw_publish` command that retries it.
+    parameters:
+      - name: label
+        required: true
+        description: Snippet label, one word such as `fit-ols`. Defaults the slug.
+      - name: folded
+        description: Folds every output block.
+      - name: unfolded
+        description: Opens every output block. Without `folded` or `unfolded`, Cloud folds output longer than 12 lines.
+      - name: nooutput
+        description: Publishes the code blocks only.
+      - name: slug(string), title(string), description(string)
+        description: As in `fw_publish`. `slug()` defaults to the label.
+      - name: to(destination)
+        description: "`cloud` or a named destination in `settings.yml`."
+      - name: visibility(string)
+        description: "`public`, `unlisted`, or `private`. New Cloud snippets default to `unlisted`."
+      - name: private
+        description: Shorthand for `visibility(private)`.
+      - name: notebook(url)
+        description: Adds a link to the full notebook (an `https` address).
+      - name: model(slug or url)
+        description: Adds a link to a model artifact in the same project, or an `https` address. Readers see it only when they may open the model.
+      - name: repository(url)
+        description: GitHub repository of the do-file, such as `https://github.com/owner/analysis`. Overrides `publish.repository`.
+      - name: file(filename)
+        description: Do-file that holds the snippet, when the label search finds none or several.
+      - name: saving(filename [, replace])
+        description: Writes a local copy of the snippet JSON.
+      - name: nopublish
+        description: Skips publishing. Requires `saving()`.
+    returns: |
+      - `r(url)`, `r(version)`, `r(slug)`, and the other `fw_publish` results
+      - `r(unchanged)`: `1` when Cloud kept the latest version, else `0`
+      - `r(label)`: snippet label
+      - `r(source_file)`: do-file relative to the project root
+      - `r(lines)`: do-file line range, such as `12-15`
+      - `r(commit)`: git commit
+      - `r(file)`: the `saving()` copy
+      - `r(blocks)`, `r(code_blocks)`, `r(output_blocks)`: block counts
+    examples:
+      - title: Publish a regression with its table
+        code: |
+          sysuse auto, clear
+          fw_snippet begin fit-ols
+          regress price mpg i.foreign
+          fw_snippet end, unfolded visibility(public)
+        runnable: false
+      - title: Save the snippet without publishing
+        code: |
+          fw_snippet begin summary
+          summarize price mpg weight
+          fw_snippet end, nopublish saving(summary.json, replace)
+        runnable: false
+    see_also: [fw_publish, "guide:snippets", "guide:publishing"]
 
   - id: fw_login
     name: fw_login

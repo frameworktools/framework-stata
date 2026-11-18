@@ -1,0 +1,14 @@
+{smcl}
+{com}{sf}{ul off}{txt}
+{com}. quietly summarize price
+{txt}
+{com}. quietly {c -(}
+{res}inside
+{txt}
+{com}. * a comment
+. display r(mean)
+{res}21.297297
+{txt}
+{com}. fw_snippet end, folded nopublish saving(`here'/scratch.json, replace)
+{res}{smcl}
+{res}{sf}{ul off}

@@ -1,0 +1,21 @@
+{smcl}
+{com}{sf}{ul off}{txt}
+{com}. forvalues i = 1/2 {c -(}
+{txt}  2{com}.     display "i is `i'"
+{txt}  3{com}. {c )-}
+i is 1
+i is 2
+{txt}
+{com}. foreach v in price mpg {c -(}
+{txt}  2{com}.     quietly summarize `v'
+{txt}  3{com}.     display "`v': " %9.2f r(mean)
+{txt}  4{com}. {c )-}
+price:   6165.26
+mpg:     21.30
+{txt}
+{com}. display "braces {c -(}res{c )-} and dollars $S_DATE"
+{res}braces {res} and dollars 18 Nov 2026
+{txt}
+{com}. fw_snippet end, nopublish saving(`here'/scratch.json, replace)
+{res}{smcl}
+{res}{sf}{ul off}

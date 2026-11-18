@@ -1,0 +1,17 @@
+{smcl}
+{com}{sf}{ul off}{txt}
+{com}. regress price mpg ///
+>     weight ///
+>     length, noheader
+{res}{txt}{hline 13}{c TT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{col 1}       price{col 14}{c |}      Coef.{col 26}   Std. Err.{col 38}      t{col 46}   P>|t|{col 54}     [95% Con{col 67}f. Interval]
+{hline 13}{c +}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{space 9}mpg {c |}{col 14}{res}{space 2}-86.78928{col 26}{space 2} 83.94335{col 37}{space 1}   -1.03{col 46}{space 3}0.305{col 54}{space 4} -254.209{col 67}{space 3} 80.63046
+{txt}{space 6}weight {c |}{col 14}{res}{space 2} 4.364798{col 26}{space 2} 1.167455{col 37}{space 1}    3.74{col 46}{space 3}0.000{col 54}{space 4} 2.036383{col 67}{space 3} 6.693213
+{txt}{space 6}length {c |}{col 14}{res}{space 2}-104.8682{col 26}{space 2} 39.72154{col 37}{space 1}   -2.64{col 46}{space 3}0.010{col 54}{space 4}-184.0903{col 67}{space 3}-25.64607
+{txt}{space 7}_cons {c |}{col 14}{res}{space 2} 14542.43{col 26}{space 2} 5890.632{col 37}{space 1}    2.47{col 46}{space 3}0.016{col 54}{space 4}  2793.94{col 67}{space 3} 26290.93
+{txt}{hline 13}{c BT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{res}{txt}
+{com}. fw_snippet end, nopublish saving(`here'/scratch.json, replace)
+{res}{smcl}
+{res}{sf}{ul off}

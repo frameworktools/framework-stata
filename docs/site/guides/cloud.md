@@ -3,7 +3,7 @@ id: cloud
 title: Framework Cloud
 description: Workstation login, keyring storage, logout, and project tokens
 section: features
-position: 5
+position: 6
 ---
 
 ## Workstation login

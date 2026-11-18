@@ -210,6 +210,46 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin cloud: fw_snippet uploads code_snippet.json under its label
+capture noisily {
+    t_write `"`root'/snippet.do"' ///
+        "fw_snippet begin fit-price" ///
+        "regress price mpg" ///
+        `"fw_snippet end, visibility(unlisted) title("Price on mileage")"'
+    do `"`root'/snippet.do"'
+    t_eq `"`r(version)'"' "3"
+    t_eq `"`r(url)'"' "http://127.0.0.1:`port'/d/fit-price"
+    assert r(unchanged) == 0
+    assert r(blocks) == 2
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "auth") == "project")
+    mata: assert(fw_get(U, "form.kind") == "code_snippet")
+    mata: assert(fw_get(U, "form.slug") == "fit-price")
+    mata: assert(fw_get(U, "form.title") == "Price on mileage")
+    mata: assert(fw_get(U, "form.visibility") == "unlisted")
+    mata: assert(fw_get(U, "form.file.filename") == "code_snippet.json")
+}
+t_end `=_rc'
+
+t_begin cloud: fw_snippet reports an unchanged snippet with its version
+capture noisily {
+    t_write `"`root'/same.do"' ///
+        "fw_snippet begin same" ///
+        "display 42" ///
+        "fw_snippet end, slug(unchanged-snippet)"
+    t_log_begin
+    do `"`root'/same.do"'
+    local unchanged = r(unchanged)
+    local version `"`r(version)'"'
+    t_log_end
+    assert `unchanged' == 1
+    t_eq `"`version'"' "2"
+    t_log_has "Unchanged, still version 2"
+}
+t_end `=_rc'
+
 t_begin cloud: fw_save pushes a ledger entry when the ledger is live
 capture noisily {
     sysuse auto, clear
