@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.3.4  18nov2026}{...}
+{* *! version 0.3.5  18nov2026}{...}
 {title:Title}
 
 {phang}
@@ -18,6 +18,7 @@
 {synopt:{helpb fw_table}}save a table with free-text headers to the tables folder{p_end}
 {synopt:{helpb fw_graph}}export a graph to the figures folder{p_end}
 {synopt:{helpb fw_publish}}publish a figure, table, document, or estimation results{p_end}
+{synopt:{helpb fw_snippet}}publish commands and the output they printed{p_end}
 {synopt:{helpb fw_login}}connect this computer to Framework Cloud{p_end}
 {synopt:{helpb fw_logout}}remove this computer's Cloud token{p_end}
 {synopt:{helpb fw_set}}set the backend and the location of fw{p_end}
