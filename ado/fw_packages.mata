@@ -206,6 +206,29 @@ string colvector fw_scaffold_functions(transmorphic S)
     return(out)
 }
 
+// Framework's own folders inside the PLUS folder that fw_scaffold replaces.
+// net install puts its files in letter folders, such as plus/f and plus/_.
+// Sets fw_nkeep, then fw_keep# for each folder that is in the old PLUS and
+// not in the new one. Folders outside PLUS stay on the ado-path anyway.
+void fw_scaffold_keep(string scalar oldplus, string scalar newplus)
+{
+    string colvector dirs
+    oldp = fw_norm(oldplus) + "/"
+    newp = fw_norm(newplus) + "/"
+    dirs = J(0, 1, "")
+    files = ("fw_scaffold.ado", "_fw_init.ado", "fw_core.mata")
+    for (i = 1; i <= cols(files); i++) {
+        fn = findfile(files[i])
+        if (fn == "") continue
+        d = fw_dirname(fw_norm(fn))
+        if (substr(d + "/", 1, strlen(oldp)) != oldp) continue
+        if (substr(d + "/", 1, strlen(newp)) == newp) continue
+        if (!anyof(dirs, d)) dirs = dirs \ d
+    }
+    st_local("fw_nkeep", strofreal(rows(dirs)))
+    for (i = 1; i <= rows(dirs); i++) st_local("fw_keep" + strofreal(i), dirs[i])
+}
+
 // Locals for fw_scaffold: fw_seed, fw_scheme, fw_plus, fw_script, and
 // fw_nfunc with fw_func# for each function folder.
 void fw_scaffold_locals()

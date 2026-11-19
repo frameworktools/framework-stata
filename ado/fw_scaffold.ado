@@ -14,7 +14,17 @@ program define fw_scaffold, rclass
     * The project's own packages: PLUS points at ado/plus for the session
     if "`fw_plus'" != "" {
         mata: fw_mkdirp(st_local("fw_plus"))
+        * Framework itself is usually installed in the PLUS folder this
+        * replaces. Its own folders there (plus/f and plus/_) go on the end
+        * of the ado-path, so fw commands not yet loaded still run. The
+        * project's packages come first. The rest of the old PLUS folder
+        * leaves the ado-path. The ado-path and PLUS last the session, and
+        * clear all keeps them.
+        mata: fw_scaffold_keep(c("sysdir_plus"), st_local("fw_plus"))
         quietly sysdir set PLUS `"`fw_plus'"'
+        forvalues i = 1/`fw_nkeep' {
+            quietly adopath + `"`fw_keep`i''"'
+        }
         `say' display as text "Packages: ado/plus in the project"
     }
     if `fw_npkg' & "`noinstall'" == "" {

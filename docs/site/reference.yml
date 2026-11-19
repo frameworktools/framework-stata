@@ -115,7 +115,7 @@ entries:
       `fw_scaffold` initializes the Stata session from project settings, matching `scaffold()` in R and Python. Place it at the top of `master.do` or individual scripts. In order, it:
 
       1. Loads the project and sets directory globals via `fw_project`.
-      2. Sets Stata's `PLUS` directory to `ado/plus` inside the project when `packages.project_ado` is `true`.
+      2. Sets Stata's `PLUS` directory to `ado/plus` inside the project when `packages.project_ado` is `true`. Framework's own folders in the previous `PLUS` directory move to the end of the ado-path, so framework commands still load and the project's packages come first.
       3. Installs missing project packages via `fw_packages`.
       4. Sets the random number seed.
       5. Sets the graph scheme.

@@ -53,3 +53,5 @@ SSC does not archive historical package versions. Setting `project_ado: true` in
 ```stata
 fw_scaffold
 ```
+
+Framework itself usually lives in the shared `PLUS` directory. `fw_scaffold` keeps framework's own folders there (`plus/f` and `plus/_`) at the end of the ado-path, so every framework command still loads. The project's `ado/plus` comes first. Other community packages in the shared directory leave the ado-path, so a package missing from the settings fails on your machine as it would for a collaborator. One exception: a package in the same letter folders as framework, such as `ftools` in `plus/f`, stays reachable. The ado-path and `PLUS` last for the Stata session, and `clear all` keeps them.

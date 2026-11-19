@@ -19,7 +19,7 @@
 it at the top of {bf:master.do} or any do-file. In order, it:
 
 {phang2}1. loads the project with {helpb fw_project}, which sets the path globals;{p_end}
-{phang2}2. points PLUS at {bf:ado/plus} in the project, when {bf:packages: project_ado} is on;{p_end}
+{phang2}2. points PLUS at {bf:ado/plus} in the project, when {bf:packages: project_ado} is on, and keeps framework's own folders from the old PLUS at the end of the ado-path;{p_end}
 {phang2}3. installs the missing packages with {helpb fw_packages};{p_end}
 {phang2}4. sets the random seed;{p_end}
 {phang2}5. sets the graph scheme;{p_end}
