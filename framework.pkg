@@ -1,8 +1,8 @@
 v 3
 d framework: Framework for Stata
 d Project paths, named datasets with integrity checks, publishing of figures,
-d tables, documents, estimation results, and code snippets, project packages
-d from SSC and GitHub, and Framework Cloud login.
+d tables, documents, estimation results, code snippets, and causal DAGs,
+d project packages from SSC and GitHub, and Framework Cloud login.
 d The same workflow as the R and Python packages. Core commands need no
 d Python; fw and framework-py add GitHub and S3 publishing.
 d
@@ -20,6 +20,9 @@ f ado/fw_cloud.mata
 f ado/fw_cloud_ps1.ihlp
 f ado/fw_cloud_sh.ihlp
 f ado/fw_core.mata
+f ado/fw_dag.ado
+f ado/fw_dag.mata
+f ado/fw_dag.sthlp
 f ado/fw_data.mata
 f ado/fw_estimates.mata
 f ado/fw_graph.ado

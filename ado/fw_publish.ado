@@ -185,9 +185,9 @@ program define fw_publish, rclass
                 if "`backend'" == "cli" mata: fw_dir_index(st_local("file"))
             }
             if `fw_isdir' local include_private 1
-            * fw and framework-py may not know the code_snippet kind yet.
-            * Cloud reads it from the file, so they send none.
-            if "`kind'" == "code_snippet" local kind
+            * fw and framework-py may not know the code_snippet and dag
+            * kinds yet. Cloud reads them from the file, so they send none.
+            if inlist("`kind'", "code_snippet", "dag") local kind
             mata: st_local("fw_slug", fw_default_slug(st_local("file"), st_local("slug")))
             local dest `"`to'"'
             if "`backend'" == "cli" {

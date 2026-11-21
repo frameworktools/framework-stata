@@ -14,6 +14,7 @@ Framework gives a research project a standard directory layout, records dataset 
 | `fw_graph` | Export a graph to the figures folder |
 | `fw_publish` | Publish a figure, table, document, or estimation results |
 | `fw_snippet` | Publish commands and the output they printed |
+| `fw_dag` | Publish a causal DAG |
 | `fw_login` | Connect this computer to Framework Cloud |
 | `fw_logout` | Remove this computer's Cloud token |
 | `fw_set` | Set the backend and the location of `fw` |
@@ -200,6 +201,14 @@ fw_snippet end, unfolded
 ```
 
 `fw_snippet` publishes a `code_snippet` artifact: the commands between `begin` and `end` and the output Stata printed under them, for embedding in blog posts and reports. It records an SMCL log, splits it at Stata's command echo, and sends the output as SMCL, which Framework Cloud renders with Stata's layout and styles. The snippet names its do-file, line range, and git commit. An unchanged snippet adds no version.
+
+### Causal DAGs
+
+```stata
+fw_dag "age -> smoking -> cancer" "age -> cancer", exposure(smoking) outcome(cancer)
+```
+
+`fw_dag` publishes a `dag` artifact: DAGitty model text built from the paths, with roles from `exposure()`, `outcome()`, `latent()`, `adjusted()`, and `selected()`. Labels come from `labels()` and from the variable labels of variables in memory with the same names. The command itself goes along as the code that built the graph. `fw_dag using model.dagitty` publishes a DAGitty file. Framework Cloud lays out and draws the graph.
 
 ## Framework Cloud
 

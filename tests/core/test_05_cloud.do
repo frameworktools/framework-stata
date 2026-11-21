@@ -299,6 +299,49 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin cloud: fw_dag uploads dag.json with kind dag
+capture noisily {
+    fw_dag "age -> smoking -> cancer" "age -> cancer", exposure(smoking) outcome(cancer) ///
+        title("Smoking and lung cancer") visibility(unlisted)
+    t_eq `"`r(slug)'"' "dag-smoking-cancer"
+    t_eq `"`r(url)'"' "http://127.0.0.1:`port'/d/dag-smoking-cancer"
+    t_eq `"`r(version)'"' "3"
+    assert r(nodes) == 3
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "auth") == "project")
+    mata: assert(fw_get(U, "form.kind") == "dag")
+    mata: assert(fw_get(U, "form.slug") == "dag-smoking-cancer")
+    mata: assert(fw_get(U, "form.title") == "Smoking and lung cancer")
+    mata: assert(fw_get(U, "form.visibility") == "unlisted")
+    mata: assert(fw_get(U, "form.file.filename") == "dag.json")
+}
+t_end `=_rc'
+
+t_begin cloud: fw_dag using sends a DAGitty file as it is
+capture noisily {
+    t_write `"`root'/smoking.dagitty"' "dag {" "smoking [exposure]" "cancer [outcome]" "smoking -> cancer" "}"
+    fw_dag using smoking.dagitty
+    t_eq `"`r(slug)'"' "smoking"
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "form.kind") == "dag")
+    mata: assert(fw_get(U, "form.file.filename") == "smoking.dagitty")
+}
+t_end `=_rc'
+
+t_begin cloud: fw_dag to a folder destination records kind dag
+capture noisily {
+    fw_dag "x -> y", exposure(x) outcome(y) to(lab) private
+    mata: A = fw_json_read(st_local("root") + "/site/dag-x-y/artifact.json")
+    mata: assert(fw_get(A, "kind") == "dag")
+    mata: R2 = fw_json_read(st_local("root") + "/site/dag-x-y/representation.json")
+    mata: assert(fw_get(R2, "dagitty") == "dag {" + char(10) + "x [exposure]" + char(10) + "y [outcome]" + char(10) + "x -> y" + char(10) + "}")
+}
+t_end `=_rc'
+
 t_begin cloud: r(slug) matches the uploaded slug for an HTML report
 capture noisily {
     mkdir `"`root'/report_files"'

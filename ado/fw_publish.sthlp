@@ -27,7 +27,7 @@
 {synopt:{opt vis:ibility(string)}}{bf:public}, {bf:unlisted}, or {bf:private}{p_end}
 {synopt:{opt priv:ate}}short for {cmd:visibility(private)}{p_end}
 {synopt:{opt includepriv:ate}}confirm files with "private" in their path{p_end}
-{synopt:{opt kind(string)}}override the detected kind, such as {bf:image}, {bf:html}, or {bf:code_snippet}{p_end}
+{synopt:{opt kind(string)}}override the detected kind, such as {bf:image}, {bf:html}, {bf:code_snippet}, or {bf:dag}{p_end}
 {synoptline}
 
 
