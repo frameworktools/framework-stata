@@ -88,6 +88,7 @@ def main(argv: list[str]) -> None:
                 "location": location,
                 "slug": _text(receipt.get("slug")),
                 "embed_link": _text(receipt.get("embed_link")),
+                "artifact_url": _text(receipt.get("artifact_url")),
             }
         else:
             result = {"ok": False, "error": f"Unknown action {action}"}

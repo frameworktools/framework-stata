@@ -226,6 +226,16 @@ fw_login
 
 `fw_login` displays a verification code and opens the browser approval page. Sign in and approve the computer. Stata stores the account token in the system keyring, shared with R, Python, and `fw`. Systems without a keyring store the token in a permission-restricted file under `~/.config/framework`. Tokens never appear in Stata's Results window, macros, or logs; a helper script passes credentials to `curl` via a temporary header file.
 
+After a publish, Stata prints the version and two links:
+
+```text
+Published version 3.
+Share:  https://framework.pub/go/az7h
+Manage: https://framework.pub/artifacts/123
+```
+
+Share is the link to paste into a blog or site that takes Framework embeds; private artifacts have none. Manage is the owner's page for the artifact. `r(embed_link)` and `r(artifact_url)` hold them.
+
 `fw_login` authenticates the workstation. Publishing artifacts from a project uses `FW_PROJECT_TOKEN` in the project's `.env` file.
 
 ## Backends

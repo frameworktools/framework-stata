@@ -422,49 +422,90 @@ capture noisily {
 }
 t_end `=_rc'
 
-t_begin cloud: the embed link prints after a publish and comes back in r(embed_link)
+t_begin cloud: a public artifact prints its version, Share, and Manage
 capture noisily {
     t_write `"`root'/embed.txt"' "Embed me"
     t_log_begin
     fw_publish "embed.txt", to(cloud) slug(embed-public) visibility(public)
-    local public `"`r(embed_link)'"'
+    local share `"`r(embed_link)'"'
+    local manage `"`r(artifact_url)'"'
+    local url `"`r(url)'"'
+    t_log_end
+    t_eq `"`share'"' "http://127.0.0.1:`port'/go/abcd"
+    t_eq `"`manage'"' "http://127.0.0.1:`port'/artifacts/42"
+    t_eq `"`url'"' "http://127.0.0.1:`port'/d/embed-public"
+    mata: L = fw_readlines(st_global("T_LOG"))
+    mata: k = select(1::rows(L), L :== "Published version 3.")
+    mata: assert(rows(k) == 1)
+    mata: assert(L[k + 1] == "Share:  http://127.0.0.1:" + st_local("port") + "/go/abcd")
+    mata: assert(L[k + 2] == "Manage: http://127.0.0.1:" + st_local("port") + "/artifacts/42")
+    t_log_lacks "Published to cloud"
+    t_log_lacks "Embed:"
+}
+t_end `=_rc'
+
+t_begin cloud: unlisted DAGs and snippets share their own link
+capture noisily {
+    t_log_begin
     fw_dag "x -> y", exposure(x) outcome(y) slug(embed-dag)
     local dag `"`r(embed_link)'"'
+    local dagm `"`r(artifact_url)'"'
     t_write `"`root'/embedsnip.do"' ///
         "fw_snippet begin embed-snippet" ///
         "display 42" ///
         "fw_snippet end"
     do `"`root'/embedsnip.do"'
     local snip `"`r(embed_link)'"'
+    local snipm `"`r(artifact_url)'"'
     t_log_end
-    t_eq `"`public'"' "http://127.0.0.1:`port'/go/abcd"
     t_eq `"`dag'"' "http://127.0.0.1:`port'/d/embed-dag"
     t_eq `"`snip'"' "http://127.0.0.1:`port'/d/embed-snippet"
-    t_log_has "Embed: http://127.0.0.1:`port'/go/abcd"
-    t_log_has "Embed: http://127.0.0.1:`port'/d/embed-dag"
+    t_eq `"`dagm'"' "http://127.0.0.1:`port'/artifacts/42"
+    t_eq `"`snipm'"' "http://127.0.0.1:`port'/artifacts/42"
+    t_log_has "Share:  http://127.0.0.1:`port'/d/embed-dag"
+    t_log_has "Share:  http://127.0.0.1:`port'/d/embed-snippet"
 }
 t_end `=_rc'
 
-t_begin cloud: a private artifact has no embed link and prints none
+t_begin cloud: a private artifact prints Manage alone
 capture noisily {
     t_log_begin
     fw_publish "embed.txt", to(cloud) slug(embed-private) private
     local link `"`r(embed_link)'"'
+    local manage `"`r(artifact_url)'"'
     t_log_end
     t_eq `"`link'"' ""
-    t_log_has "Published to cloud"
-    t_log_lacks "Embed:"
+    t_eq `"`manage'"' "http://127.0.0.1:`port'/artifacts/42"
+    t_log_has "Published version 3."
+    t_log_has "Manage: http://127.0.0.1:`port'/artifacts/42"
+    t_log_lacks "Share:"
 }
 t_end `=_rc'
 
-t_begin cloud: a folder destination prints no embed link
+t_begin cloud: an old server that reports neither link gets the published link
+capture noisily {
+    t_log_begin
+    fw_publish "embed.txt", to(cloud) slug(old-server)
+    local link `"`r(embed_link)'"'
+    local manage `"`r(artifact_url)'"'
+    t_log_end
+    t_eq `"`link'"' ""
+    t_eq `"`manage'"' ""
+    t_log_has "Published to cloud (version 3): http://127.0.0.1:`port'/d/old-server"
+    t_log_lacks "Share:"
+    t_log_lacks "Manage:"
+}
+t_end `=_rc'
+
+t_begin cloud: a folder destination prints no Share or Manage link
 capture noisily {
     t_log_begin
     fw_publish "embed.txt", to(lab) private
-    local link `"`r(embed_link)'"'
+    local link `"`r(embed_link)'`r(artifact_url)'"'
     t_log_end
     t_eq `"`link'"' ""
-    t_log_lacks "Embed:"
+    t_log_lacks "Share:"
+    t_log_lacks "Manage:"
 }
 t_end `=_rc'
 

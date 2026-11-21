@@ -510,7 +510,7 @@ string scalar fw_display_json(string scalar spec)
 }
 
 // Upload one file, or an HTML page with its _files folder, to the project.
-// Sets locals fw_url, fw_version, fw_version_url, fw_notice, fw_id, fw_embed_link, and
+// Sets locals fw_url, fw_version, fw_version_url, fw_notice, fw_id, fw_embed_link, fw_artifact_url, and
 // fw_unchanged ("true" when Cloud kept the latest version of a code snippet).
 void fw_cloud_publish(string scalar root, string scalar src_in, string scalar slug, string scalar title,
     string scalar descr, string scalar kind, string scalar visibility, | string scalar display)
@@ -599,6 +599,7 @@ void fw_cloud_publish(string scalar root, string scalar src_in, string scalar sl
     // The link to paste into a site that takes Framework embeds; null when
     // the artifact cannot be embedded.
     st_local("fw_embed_link", fw_get(J, "embed_link"))
+    st_local("fw_artifact_url", fw_get(J, "artifact_url"))
     st_local("fw_unchanged", fw_get(J, "unchanged") == "true" ? "true" : "")
     // The slug Cloud stored, else the one sent.
     rslug = fw_get(J, "slug")
@@ -666,6 +667,7 @@ void fw_bridge_result(string scalar file)
     st_local("fw_version", fw_get(J, "version"))
     st_local("fw_version_url", fw_get(J, "version_url"))
     st_local("fw_embed_link", fw_get(J, "embed_link"))
+    st_local("fw_artifact_url", fw_get(J, "artifact_url"))
     // framework-py reports a folder relative to the current folder.
     loc = fw_get(J, "location")
     st_local("fw_location", loc != "" ? fw_abs(loc) : "")
@@ -721,8 +723,9 @@ void fw_cli_publish(string scalar fw, string scalar src, string scalar to, strin
     st_local("fw_version_url", fw_get(J, "version_url"))
     st_local("fw_notice", fw_get(J, "notice"))
     st_local("fw_location", fw_get(J, "location"))
-    // fw 0.8.5 and newer report embed_link; older fw reports none.
+    // fw 0.8.5 and newer report embed_link, and fw 0.8.6 artifact_url; older fw reports neither.
     st_local("fw_embed_link", fw_get(J, "embed_link"))
+    st_local("fw_artifact_url", fw_get(J, "artifact_url"))
     if (fw_get(J, "slug") != "") st_local("fw_slug", fw_get(J, "slug"))
 }
 

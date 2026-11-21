@@ -43,6 +43,7 @@ program define fw_publish, rclass
     local fw_wild 0
     local fw_unchanged
     local fw_embed_link
+    local fw_artifact_url
     mata: fw__publish_scratch = fw_scratch()
     mata: st_local("scratch", fw__publish_scratch)
     capture noisily {
@@ -218,20 +219,32 @@ program define fw_publish, rclass
     mata: fw_scratch_done(st_local("scratch"))
     if `rc' exit `rc'
 
-    local where `"`fw_url'"'
-    if `"`where'"' == "" local where `"`fw_location'"'
-    local vtext = cond("`fw_version'" != "", " (version `fw_version')", "")
-    * Cloud adds no version for a code snippet that has not changed.
-    if "`fw_unchanged'" == "true" display as text `"Unchanged, still version `fw_version': "' _c
-    else display as text `"Published to `fw_dest'`vtext': "' _c
-    if regexm(`"`where'"', "^https?://") display as result `"{browse "`where'"}"'
-    else display as result `"`where'"'
-    * The link to paste into a blog or site that takes Framework embeds.
-    if regexm(`"`fw_embed_link'"', "^https?://") display as text "Embed: " as result `"{browse "`fw_embed_link'"}"'
-    else local fw_embed_link
+    * Share is the link to paste into a blog or site that takes Framework
+    * embeds; a private artifact has none. Manage is the owner's page.
+    if !regexm(`"`fw_embed_link'"', "^https?://") local fw_embed_link
+    if !regexm(`"`fw_artifact_url'"', "^https?://") local fw_artifact_url
+    if `"`fw_embed_link'`fw_artifact_url'"' != "" {
+        local vtext = cond("`fw_version'" != "", " version `fw_version'", "")
+        * Cloud adds no version for a code snippet that has not changed.
+        if "`fw_unchanged'" == "true" display as text "Unchanged, still`vtext'."
+        else display as text "Published`vtext'."
+        if `"`fw_embed_link'"' != "" display as text "Share:  " as result `"{browse "`fw_embed_link'"}"'
+        if `"`fw_artifact_url'"' != "" display as text "Manage: " as result `"{browse "`fw_artifact_url'"}"'
+    }
+    else {
+        * An older server or fw reports neither: the reader link, as before.
+        local where `"`fw_url'"'
+        if `"`where'"' == "" local where `"`fw_location'"'
+        local vtext = cond("`fw_version'" != "", " (version `fw_version')", "")
+        if "`fw_unchanged'" == "true" display as text `"Unchanged, still version `fw_version': "' _c
+        else display as text `"Published to `fw_dest'`vtext': "' _c
+        if regexm(`"`where'"', "^https?://") display as result `"{browse "`where'"}"'
+        else display as result `"`where'"'
+    }
     if `"`fw_notice'"' != "" display as text `"`fw_notice'"'
     return local url `"`fw_url'"'
     return local embed_link `"`fw_embed_link'"'
+    return local artifact_url `"`fw_artifact_url'"'
     return local location `"`fw_location'"'
     return local version `"`fw_version'"'
     return local version_url `"`fw_version_url'"'

@@ -105,11 +105,21 @@ listed. A later publish without {opt visibility()} keeps the current visibility.
 {opt slug()} names the artifact; it does not change the visibility.
 
 {pstd}
-After a Framework Cloud publish, {cmd:fw_publish} prints the embed link on a
-line that starts {bf:Embed:}. Paste it into a blog or site that takes Framework
-embeds. A public artifact's embed link is its short link, and an unlisted
-artifact's is its own link. A private artifact, or one with a password, has
-none. The {bf:fw} backend reports it from fw 0.8.5 on.
+After a Framework Cloud publish, {cmd:fw_publish} prints the version and two
+links:
+
+{p 8 8 2}
+{cmd:Published version 3.}{break}
+{cmd:Share:  https://framework.pub/go/az7h}{break}
+{cmd:Manage: https://framework.pub/artifacts/123}
+
+{pstd}
+{bf:Share} is the link to paste into a blog or site that takes Framework
+embeds: a public artifact's short link, or an unlisted artifact's own link. A
+private artifact, or one with a password, has none. {bf:Manage} is your page
+for the artifact on Framework Cloud, with its settings and versions. An older
+server, or {bf:fw} before 0.8.6, reports neither, and {cmd:fw_publish} prints
+the published link as before.
 
 
 {marker display}{...}
@@ -214,7 +224,8 @@ intervals.
 {p2col:{cmd:r(location)}}the published folder, for folder destinations{p_end}
 {p2col:{cmd:r(version)}}the version number{p_end}
 {p2col:{cmd:r(version_url)}}the link to this version, when the destination has one{p_end}
-{p2col:{cmd:r(embed_link)}}the link to paste into a site that takes Framework embeds, when Framework Cloud gives one{p_end}
+{p2col:{cmd:r(embed_link)}}the Share link, to paste into a site that takes Framework embeds, when Framework Cloud gives one{p_end}
+{p2col:{cmd:r(artifact_url)}}the Manage link, your page for the artifact on Framework Cloud{p_end}
 {p2col:{cmd:r(unchanged)}}1 when Framework Cloud kept the latest version of an unchanged code snippet, else 0{p_end}
 {p2col:{cmd:r(destination)}}the destination name{p_end}
 {p2col:{cmd:r(driver)}}cloud, folder, github, or s3{p_end}

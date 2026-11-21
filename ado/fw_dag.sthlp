@@ -138,7 +138,8 @@ command to embeds. The reader page on Framework Cloud always shows them.
 
 {p2colset 8 26 28 2}{...}
 {p2col:{cmd:r(url)}}the published link{p_end}
-{p2col:{cmd:r(embed_link)}}the link to paste into a site that takes Framework embeds{p_end}
+{p2col:{cmd:r(embed_link)}}the Share link, to paste into a site that takes Framework embeds{p_end}
+{p2col:{cmd:r(artifact_url)}}the Manage link, your page for the artifact on Framework Cloud{p_end}
 {p2col:{cmd:r(version)}}the version number{p_end}
 {p2col:{cmd:r(slug)}}the artifact name{p_end}
 {p2col:{cmd:r(dagitty)}}the DAGitty text{p_end}

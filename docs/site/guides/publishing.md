@@ -96,14 +96,15 @@ Issue project tokens from the project's **Computers & tokens** page in Framework
 
 HTML files with a companion `<name>_files` directory upload as a single ZIP bundle.
 
-After a Cloud publish, `fw_publish`, `fw_dag`, and `fw_snippet end` print the embed link, the link to paste into a blog or site that takes Framework embeds:
+After a Cloud publish, `fw_publish`, `fw_dag`, and `fw_snippet end` print the version and two links:
 
 ```text
-Published to cloud (version 1): https://framework.pub/d/abc123
-Embed: https://framework.pub/go/abcd
+Published version 3.
+Share:  https://framework.pub/go/az7h
+Manage: https://framework.pub/artifacts/123
 ```
 
-A public artifact's embed link is its short link, and an unlisted artifact's is its own link. Private and password-protected artifacts have none. `r(embed_link)` holds it. The `fw` backend reports it from fw 0.8.5 on.
+Share is the link to paste into a blog or site that takes Framework embeds: a public artifact's short link, or an unlisted artifact's own link. Private and password-protected artifacts have none. Manage is the owner's page for the artifact on Framework Cloud. `r(embed_link)` and `r(artifact_url)` hold them. An older server, or fw before 0.8.6, reports neither, and the first line names the published link instead.
 
 New Cloud artifacts default to `unlisted` visibility (accessible to anyone with the link and omitted from public indexes). Subsequent publishes without `visibility()` preserve the artifact's existing visibility. Setting `slug()` assigns the readable identifier without altering visibility.
 
@@ -150,7 +151,8 @@ R, Python, and `fw` enforce the same check. Framework never uploads files withou
 | `r(location)` | Output directory path for `folder` destinations |
 | `r(version)` | Published version number |
 | `r(version_url)` | Version-specific URL |
-| `r(embed_link)` | Link to paste into a site that takes Framework embeds, when Cloud gives one |
+| `r(embed_link)` | Share link, to paste into a site that takes Framework embeds, when Cloud gives one |
+| `r(artifact_url)` | Manage link, the owner's page for the artifact on Cloud |
 | `r(unchanged)` | `1` when Cloud kept the latest version of an unchanged code snippet |
 | `r(destination)` | Destination name |
 | `r(driver)` | `cloud`, `folder`, `github`, or `s3` |

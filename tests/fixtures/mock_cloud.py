@@ -1,7 +1,7 @@
 """A minimal Framework Cloud for Framework for Stata's tests.
 
 Standard library only. Serves the device login flow, /api/v1/me, token
-revocation, document uploads (an unchanged code snippet and embed links included), the ledger, and external artifact tracking. Tokens are fake.
+revocation, document uploads (an unchanged code snippet, share and manage links, and an old server's reply included), the ledger, and external artifact tracking. Tokens are fake.
 
     python3 mock_cloud.py <port> <log.jsonl>
 """
@@ -100,15 +100,21 @@ class Handler(BaseHTTPRequestHandler):
             # link, an unlisted one's own link, none for a private one.
             visibility = entry.get("form", {}).get("visibility", "unlisted")
             embed = {"public": f"{base}/go/abcd", "private": None}.get(visibility, f"{base}/d/{slug}")
+            # An old server reports neither link.
+            if slug == "old-server":
+                return self._send(201, {
+                    "id": 44, "slug": slug, "version": 3,
+                    "url": f"{base}/d/{slug}", "version_url": f"{base}/d/{slug}/v/3", "notice": None,
+                })
             # Cloud adds no version for a code snippet that has not changed.
             if slug == "unchanged-snippet":
                 return self._send(200, {
                     "id": 43, "slug": slug, "version": 2, "unchanged": True,
-                    "url": f"{base}/d/{slug}", "version_url": f"{base}/d/{slug}/v/2", "notice": None, "embed_link": embed,
+                    "url": f"{base}/d/{slug}", "version_url": f"{base}/d/{slug}/v/2", "notice": None, "embed_link": embed, "artifact_url": f"{base}/artifacts/42",
                 })
             return self._send(201, {
                 "id": 42, "slug": slug, "version": 3,
-                "url": f"{base}/d/{slug}", "version_url": f"{base}/d/{slug}/v/3", "notice": None, "embed_link": embed,
+                "url": f"{base}/d/{slug}", "version_url": f"{base}/d/{slug}/v/3", "notice": None, "embed_link": embed, "artifact_url": f"{base}/artifacts/42",
             })
         if self.path == "/api/v1/ledger":
             return self._send(201, {"sequence": 7})

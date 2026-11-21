@@ -473,7 +473,8 @@ entries:
       - `r(location)`: output directory for `folder` destinations
       - `r(version)`: published version number
       - `r(version_url)`: version-specific URL
-      - `r(embed_link)`: the link to paste into a site that takes Framework embeds, when Cloud gives one
+      - `r(embed_link)`: the Share link, to paste into a site that takes Framework embeds, when Cloud gives one
+      - `r(artifact_url)`: the Manage link, the owner's page for the artifact on Cloud
       - `r(unchanged)`: `1` when Cloud kept the latest version of an unchanged code snippet, else `0`
       - `r(destination)`: destination name
       - `r(driver)`: `cloud`, `folder`, `github`, or `s3`
