@@ -4,7 +4,7 @@ program define fw_publish, rclass
     version 14
     syntax [anything(name=file id="file")] [, ESTimates SLUG(string) TItle(string) ///
         DESCription(string) TO(string) VISibility(string) PRIVate INCLUDEPRIVate KIND(string) ///
-        Level(cilevel) SAVing(string asis)]
+        Level(cilevel) SAVing(string asis) DISPlay(string)]
     _fw_need_project
     gettoken file rest : file
     if `"`rest'"' != "" {
@@ -32,6 +32,8 @@ program define fw_publish, rclass
         }
         local visibility private
     }
+    * Display settings are checked before anything is written.
+    if `"`display'"' != "" mata: fw__display = fw_display_parse(st_local("display"))
     if `"`saving'"' != "" & "`estimates'" == "" {
         display as error "saving() goes with the estimates option."
         exit 198
@@ -148,6 +150,7 @@ program define fw_publish, rclass
                 else display as error "Folder visibility must match the destination's configured visibility (`fw_dest_visibility')."
                 exit 198
             }
+            if `"`display'"' != "" display as text "Note: display() sets what Framework Cloud embeds show. The folder destination `fw_dest' does not use it."
             local bundle `"`scratch'/bundle"'
             if `fw_isdir' {
                 mata: fw__manifest = fw_bundle_build_dir(fw__srcdir, fw__selected, st_local("bundle"), st_local("slug"), ///
@@ -171,7 +174,7 @@ program define fw_publish, rclass
                 if `pages' == 0 mata: fw_dir_index(st_local("file"))
             }
             mata: fw_cloud_publish(st_global("fw_root"), st_local("file"), st_local("slug"), st_local("title"), ///
-                st_local("description"), st_local("kind"), st_local("visibility"))
+                st_local("description"), st_local("kind"), st_local("visibility"), st_local("display"))
         }
         else {
             * fw and framework-py publish folders. A wildcard sends a copy of
@@ -193,7 +196,7 @@ program define fw_publish, rclass
             if "`backend'" == "cli" {
                 mata: fw_cli_publish(st_local("fwexe"), st_local("file"), st_local("dest"), st_local("slug"), ///
                     st_local("title"), st_local("description"), st_local("kind"), st_local("visibility"), ///
-                    `include_private', st_global("fw_root"))
+                    `include_private', st_global("fw_root"), st_local("display"))
             }
             else {
                 capture findfile fw_bridge.py
@@ -204,7 +207,7 @@ program define fw_publish, rclass
                 local bridge `"`r(fn)'"'
                 mata: fw_bridge_args(st_local("scratch") + "/args.json", st_local("file"), st_local("dest"), ///
                     st_local("slug"), st_local("title"), st_local("description"), st_local("kind"), ///
-                    st_local("visibility"), `include_private')
+                    st_local("visibility"), `include_private', st_local("display"))
                 python script `"`bridge'"', args(publish `"`scratch'/args.json"' `"`scratch'/result.json"')
                 mata: fw_bridge_result(st_local("scratch") + "/result.json")
             }

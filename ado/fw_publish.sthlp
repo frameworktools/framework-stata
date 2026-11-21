@@ -28,6 +28,7 @@
 {synopt:{opt priv:ate}}short for {cmd:visibility(private)}{p_end}
 {synopt:{opt includepriv:ate}}confirm files with "private" in their path{p_end}
 {synopt:{opt kind(string)}}override the detected kind, such as {bf:image}, {bf:html}, {bf:code_snippet}, or {bf:dag}{p_end}
+{synopt:{opt disp:lay(settings)}}what Framework Cloud embeds show, such as {cmd:display(legend=off)}{p_end}
 {synoptline}
 
 
@@ -102,6 +103,42 @@ On Framework Cloud, {opt visibility()} sets who can open the artifact. Without
 it, a new artifact is unlisted: anyone with the link can open it, but it is not
 listed. A later publish without {opt visibility()} keeps the current visibility.
 {opt slug()} names the artifact; it does not change the visibility.
+
+
+{marker display}{...}
+{title:Display settings}
+
+{pstd}
+{opt display()} sets what embeds of the artifact show on other sites, such as
+blog posts. It takes {it:key}{cmd:=on} or {it:key}{cmd:=off}, separated by
+spaces: {cmd:display(analysis=off dagitty=off)}. Every setting is on by
+default. Framework Cloud keeps each artifact's settings across versions, and a
+publish changes only the settings it names, so {it:key}{cmd:=on} restores a
+default. Without {opt display()}, the settings stay as they are. The reader
+page on Framework Cloud always shows everything. The artifact's Settings tab
+on Framework Cloud changes them too.
+
+{p2colset 8 26 28 2}{...}
+{p2col:{bf:title}}the title above the artifact{p_end}
+{p2col:{bf:description}}the description{p_end}
+{p2col:{bf:author}}the author's name{p_end}
+{p2col:{bf:details}}the details section of a model or test{p_end}
+{p2col:{bf:variable_tips}}a model's tips on its terms{p_end}
+{p2col:{bf:column_summaries}}a table's column summaries{p_end}
+{p2col:{bf:output}}a code snippet's output; off starts it hidden{p_end}
+{p2col:{bf:links}}a code snippet's notebook and model links{p_end}
+{p2col:{bf:legend}}a DAG's role legend{p_end}
+{p2col:{bf:analysis}}a DAG's adjustment sets and implications{p_end}
+{p2col:{bf:dagitty}}a DAG's DAGitty code{p_end}
+{p2col:{bf:code}}the code that built a DAG{p_end}
+{p2col:{bf:interactive}}an interactive chart; off shows its static image{p_end}
+{p2colreset}{...}
+
+{pstd}
+An unknown setting or a value other than {bf:on} or {bf:off} stops with error
+198 before anything is published. The core backend and framework-py send the
+settings to Framework Cloud. The {bf:fw} backend needs {bf:fw} 0.8.3 or newer.
+A folder destination does not use them.
 
 
 {title:Estimation commands}

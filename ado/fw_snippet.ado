@@ -55,7 +55,7 @@ program define _fw_snippet_end, rclass
     version 14
     syntax [, FOLDed UNFOLDed noOUTput SLUG(string) TItle(string) DESCription(string) ///
         TO(string) VISibility(string) PRIVate FILE(string) REPOsitory(string) ///
-        NOTEbook(string) MODel(string) SAVing(string asis) noPUBlish]
+        NOTEbook(string) MODel(string) SAVing(string asis) DISPlay(string) noPUBlish]
     _fw_init
     capture quietly log query fw_snippet
     if _rc {
@@ -79,6 +79,7 @@ program define _fw_snippet_end, rclass
         exit 198
     }
     if "`private'" != "" local visibility private
+    if `"`display'"' != "" mata: fw__display = fw_display_parse(st_local("display"))
     if `"`notebook'"' != "" & substr(`"`notebook'"', 1, 8) != "https://" {
         display as error "notebook() takes an https:// address."
         exit 198
@@ -160,7 +161,7 @@ program define _fw_snippet_end, rclass
             * The snippet is a file Stata wrote, so the private-path check
             * does not apply to its scratch path.
             fw_publish `"`json'"', slug(`"`slug'"') title(`"`title'"') description(`"`description'"') ///
-                to(`"`to'"') visibility(`"`visibility'"') kind(code_snippet) includeprivate
+                to(`"`to'"') visibility(`"`visibility'"') kind(code_snippet) includeprivate display(`"`display'"')
             local ok 2
         }
     }
@@ -169,7 +170,8 @@ program define _fw_snippet_end, rclass
         * A built snippet that failed to publish stays on disk to retry.
         if `ok' == 1 & "`publish'" != "nopublish" {
             display as error `"The snippet is in `json'. Publish it again with:"'
-            display as error `"  fw_publish "`json'", kind(code_snippet) slug(`slug')"'
+            local dopt = cond(`"`display'"' != "", `" display(`display')"', "")
+            display as error `"  fw_publish "`json'", kind(code_snippet) slug(`slug')`dopt'"'
         }
         else mata: fw_scratch_done(st_local("dir"))
         exit `rc'

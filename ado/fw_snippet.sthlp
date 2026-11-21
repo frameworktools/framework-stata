@@ -30,6 +30,7 @@
 {synopt:{opt model(slug or url)}}link to the model artifact the code fit{p_end}
 {synopt:{opt repo:sitory(url)}}the GitHub repository that holds the do-file{p_end}
 {synopt:{opt file(filename)}}the do-file that holds the snippet{p_end}
+{synopt:{opt disp:lay(settings)}}what Framework Cloud embeds show, such as {cmd:display(legend=off)}{p_end}
 {synopt:{opt sav:ing(filename [, replace])}}keep a copy of the snippet document{p_end}
 {synopt:{opt nopub:lish}}save the snippet without publishing it; needs {opt saving()}{p_end}
 {synoptline}
@@ -123,6 +124,13 @@ otherwise.
 {opt notebook(url)} adds a link to the full notebook. {opt model()} adds a
 link to a model artifact: its slug in the same project, or an https address.
 Readers see the model link only when they may open the model.
+
+{phang}
+{opt display(settings)} sets what embeds of the snippet show, as in
+{helpb fw_publish##display:fw_publish}: {bf:output}, {bf:links}, {bf:title},
+{bf:description}, and {bf:author}, each {bf:on} or {bf:off}.
+{cmd:display(output=off)} starts the output hidden behind Show output in
+every embed.
 
 {phang}
 {opt saving(filename [, replace])} keeps a copy of the snippet document, a

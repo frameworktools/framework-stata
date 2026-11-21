@@ -54,6 +54,19 @@ def main(argv: list[str]) -> None:
                 for key in ("to", "slug", "title", "description", "kind", "visibility")
                 if args.get(key)
             }
+            # Display settings go only when given, to a framework-py that
+            # knows them.
+            if args.get("display"):
+                import inspect
+
+                params = inspect.signature(framework.publish).parameters
+                takes_kwargs = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+                if "display" not in params and not takes_kwargs:
+                    raise RuntimeError(
+                        "display() needs a framework-py that takes display settings. "
+                        "Update framework-py, or publish with the core backend: fw_set backend core."
+                    )
+                options["display"] = args["display"]
             receipts: list[dict] = []
             restore = _capture_receipt(framework, receipts)
             try:

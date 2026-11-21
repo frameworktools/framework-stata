@@ -98,6 +98,30 @@ HTML files with a companion `<name>_files` directory upload as a single ZIP bund
 
 New Cloud artifacts default to `unlisted` visibility (accessible to anyone with the link and omitted from public indexes). Subsequent publishes without `visibility()` preserve the artifact's existing visibility. Setting `slug()` assigns the readable identifier without altering visibility.
 
+## Display settings
+
+`display()` sets what embeds of an artifact show on other sites, such as blog posts. It takes `key=on` or `key=off`, separated by spaces:
+
+```stata
+fw_dag "age -> smoking -> cancer" "age -> cancer", exposure(smoking) outcome(cancer) display(legend=off dagitty=off)
+fw_publish, estimates display(details=off)
+```
+
+| Key | Applies to | Off means |
+|---|---|---|
+| `title`, `description`, `author` | all | The embed leaves it out. |
+| `details` | models and tests | No details section. |
+| `variable_tips` | models | No tips on terms. |
+| `column_summaries` | tables | No column summaries in tips. |
+| `output` | code snippets | The output starts hidden. |
+| `links` | code snippets | No notebook and model links. |
+| `legend`, `analysis`, `dagitty`, `code` | DAGs | No role legend, analysis, DAGitty code, or source code. |
+| `interactive` | Vega-Lite charts | The static image shows instead. |
+
+Every setting is on by default. Framework Cloud keeps an artifact's settings across versions. A publish changes only the keys it names, so `key=on` restores a default, and a publish without `display()` changes nothing. The reader page always shows everything. An unknown key or a value other than `on` or `off` stops with error 198 before anything is published.
+
+`fw_publish`, `fw_dag`, and `fw_snippet end` take `display()`. The core backend and framework-py send it to Framework Cloud. The `fw` backend needs fw 0.8.3 or newer. Folder destinations ignore it.
+
 ## Private paths
 
 Any file whose full path contains `private` (case-insensitive) requires explicit confirmation before publishing. Interactive Stata prompts for confirmation. Batch mode stops with error 198 unless `includeprivate` is passed. Note that `private` sets `visibility(private)` and does not bypass the path check.

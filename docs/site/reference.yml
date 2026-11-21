@@ -460,7 +460,9 @@ entries:
       - name: includeprivate
         description: Confirms publishing files or estimation datasets from paths containing `private`.
       - name: kind(string)
-        description: Overrides inferred artifact kind (`image`, `html`, `file`, or `code_snippet`).
+        description: Overrides inferred artifact kind (`image`, `html`, `file`, `code_snippet`, or `dag`).
+      - name: display(settings)
+        description: "What Framework Cloud embeds show, as `key=on` or `key=off` separated by spaces, such as `display(legend=off analysis=off)`. Keys: `title`, `description`, `author`, `details`, `variable_tips`, `column_summaries`, `output`, `links`, `legend`, `analysis`, `dagitty`, `code`, `interactive`. Only named keys change. The `fw` backend needs fw 0.8.3 or newer."
       - name: level(#)
         default: c(level)
         description: Confidence level for `estimates` (defaults to `c(level)`, typically 95). Estimation command display flags are not inherited automatically.
@@ -544,6 +546,8 @@ entries:
         description: GitHub repository of the do-file, such as `https://github.com/owner/analysis`. Overrides `publish.repository`.
       - name: file(filename)
         description: Do-file that holds the snippet, when the label search finds none or several.
+      - name: display(settings)
+        description: "What Framework Cloud embeds of the snippet show, such as `display(output=off links=off)`. See `fw_publish`."
       - name: saving(filename [, replace])
         description: Writes a local copy of the snippet JSON.
       - name: nopublish

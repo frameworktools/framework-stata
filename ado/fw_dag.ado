@@ -6,7 +6,7 @@ program define fw_dag, rclass
     syntax [anything(name=paths id="paths")] [using/] [, EXPosure(string asis) OUTcome(string asis) ///
         LATent(string asis) ADJusted(string asis) SELected(string asis) LABels(string asis) ///
         noVARLabels noCODE SLUG(string) TItle(string) DESCription(string) TO(string) ///
-        VISibility(string) PRIVate INCLUDEPRIVate SAVing(string asis) noPUBlish]
+        VISibility(string) PRIVate INCLUDEPRIVate SAVing(string asis) DISPlay(string) noPUBlish]
     local nocode `code'
     _fw_init
 
@@ -28,6 +28,7 @@ program define fw_dag, rclass
         exit 198
     }
     if "`private'" != "" local visibility private
+    if `"`display'"' != "" mata: fw__display = fw_display_parse(st_local("display"))
     local savepath
     local savereplace 0
     if `"`saving'"' != "" {
@@ -114,7 +115,7 @@ program define fw_dag, rclass
                 local incpriv includeprivate
             }
             fw_publish `"`file'"', slug(`"`slug'"') title(`"`title'"') description(`"`description'"') ///
-                to(`"`to'"') visibility(`"`visibility'"') kind(dag) `incpriv'
+                to(`"`to'"') visibility(`"`visibility'"') kind(dag) `incpriv' display(`"`display'"')
         }
     }
     local rc = _rc

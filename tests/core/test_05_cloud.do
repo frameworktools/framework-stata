@@ -332,6 +332,96 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin cloud: display settings parse to the JSON Cloud reads
+capture noisily {
+    mata: assert(fw_display_json("legend=off") == `"{"legend":false}"')
+    mata: assert(fw_display_json(" Legend = OFF  analysis=on ") == `"{"legend":false,"analysis":true}"')
+    * A repeated key that agrees is kept once.
+    mata: assert(fw_display_json("code=off code=off") == `"{"code":false}"')
+    mata: assert(fw_display_json("") == "")
+}
+t_end `=_rc'
+
+t_begin cloud: fw_publish sends display only when given
+capture noisily {
+    t_write `"`root'/note.txt"' "A note"
+    fw_publish "note.txt", to(cloud) slug("display-note") display(title=off description=on)
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: D = fw_json_parse(fw_get(U, "form.display"))
+    mata: assert(fw_get(D, "title") == "false")
+    mata: assert(fw_get(D, "description") == "true")
+    mata: assert(fw_get(D, ".@") == "title" + char(31) + "description")
+    fw_publish "note.txt", to(cloud) slug("display-note")
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "form.display") == "")
+}
+t_end `=_rc'
+
+t_begin cloud: fw_dag and fw_snippet pass display to the upload
+capture noisily {
+    fw_dag "x -> y", exposure(x) outcome(y) display(legend=off dagitty=off)
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "form.kind") == "dag")
+    mata: assert(fw_get(U, "form.display") == `"{"legend":false,"dagitty":false}"')
+    t_write `"`root'/hidden.do"' ///
+        "fw_snippet begin hidden-output" ///
+        "display 42" ///
+        "fw_snippet end, display(output=off links=off)"
+    do `"`root'/hidden.do"'
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "form.slug") == "hidden-output")
+    mata: assert(fw_get(U, "form.display") == `"{"output":false,"links":false}"')
+}
+t_end `=_rc'
+
+t_begin cloud: a bad display setting stops before any upload
+capture noisily {
+    t_requests `"`log'"'
+    mata: st_local("before", strofreal(rows(R)))
+    t_log_begin
+    capture noisily fw_publish "note.txt", to(cloud) display(legnd=off)
+    local rc1 = _rc
+    capture noisily fw_dag "x -> y", display(legend=no)
+    local rc2 = _rc
+    capture noisily fw_publish "note.txt", to(cloud) display(legend)
+    local rc3 = _rc
+    capture noisily fw_publish "note.txt", to(cloud) display(code=off code=on)
+    local rc4 = _rc
+    t_log_end
+    assert `rc1' == 198 & `rc2' == 198 & `rc3' == 198 & `rc4' == 198
+    t_log_has "display() has no setting legnd. The settings are title, description"
+    t_log_has "display() takes on or off for legend, not no."
+    t_log_has "display() takes settings as key=on or key=off"
+    t_log_has "display() sets code both on and off."
+    t_requests `"`log'"'
+    mata: assert(rows(R) == strtoreal(st_local("before")))
+}
+t_end `=_rc'
+
+t_begin cloud: a bad display setting leaves the snippet open
+capture noisily {
+    t_write `"`root'/badopt.do"' ///
+        "fw_snippet begin kept-open" ///
+        "display 1" ///
+        "capture noisily fw_snippet end, display(outptu=off)" ///
+        "assert _rc == 198" ///
+        "fw_snippet end, display(output=off)"
+    do `"`root'/badopt.do"'
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "form.slug") == "kept-open")
+}
+t_end `=_rc'
+
 t_begin cloud: fw_dag to a folder destination records kind dag
 capture noisily {
     fw_dag "x -> y", exposure(x) outcome(y) to(lab) private

@@ -460,11 +460,60 @@ void fw_track_external(string scalar root, string scalar bundle, string scalar m
 // Framework Cloud
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Display settings
+// ---------------------------------------------------------------------------
+
+// The embed display settings Framework Cloud knows.
+string rowvector fw_display_keys()
+{
+    return(("title", "description", "author", "details", "variable_tips", "column_summaries",
+        "output", "links", "legend", "analysis", "dagitty", "code", "interactive"))
+}
+
+// display(legend=off analysis=on) as an n x 2 matrix of keys and "true" or
+// "false". Stops with a message on an unknown key or value.
+string matrix fw_display_parse(string scalar spec_in)
+{
+    // Spaces around = are allowed: legend = off.
+    spec = strtrim(spec_in)
+    while (strpos(spec, " =")) spec = subinstr(spec, " =", "=")
+    while (strpos(spec, "= ")) spec = subinstr(spec, "= ", "=")
+    keys = fw_display_keys()
+    out = J(0, 2, "")
+    t = tokens(spec)
+    for (i = 1; i <= cols(t); i++) {
+        k = strpos(t[i], "=")
+        if (k == 0) fw_error("display() takes settings as key=on or key=off, such as display(legend=off), not " + t[i] + ".", 198)
+        key = strlower(substr(t[i], 1, k - 1))
+        val = strlower(substr(t[i], k + 1, .))
+        if (!anyof(keys, key)) fw_error("display() has no setting " + key + ". The settings are " + invtokens(keys, ", ") + ".", 198)
+        if (val != "on" & val != "off") fw_error("display() takes on or off for " + key + ", not " + (val == "" ? "nothing" : val) + ".", 198)
+        b = (val == "on" ? "true" : "false")
+        if (rows(out) & anyof(out[., 1], key)) {
+            if (select(out[., 2], out[., 1] :== key) != b) fw_error("display() sets " + key + " both on and off.", 198)
+            continue
+        }
+        out = out \ (key, b)
+    }
+    return(out)
+}
+
+// The display settings as the JSON object Framework Cloud reads, or "".
+string scalar fw_display_json(string scalar spec)
+{
+    D = fw_display_parse(spec)
+    if (rows(D) == 0) return("")
+    s = "{"
+    for (i = 1; i <= rows(D); i++) s = s + (i > 1 ? "," : "") + fw_json_str(D[i, 1]) + ":" + D[i, 2]
+    return(s + "}")
+}
+
 // Upload one file, or an HTML page with its _files folder, to the project.
 // Sets locals fw_url, fw_version, fw_version_url, fw_notice, fw_id, and
 // fw_unchanged ("true" when Cloud kept the latest version of a code snippet).
 void fw_cloud_publish(string scalar root, string scalar src_in, string scalar slug, string scalar title,
-    string scalar descr, string scalar kind, string scalar visibility)
+    string scalar descr, string scalar kind, string scalar visibility, | string scalar display)
 {
     url = fw_cloud_url(root)
     d = fw_scratch()
@@ -531,6 +580,8 @@ void fw_cloud_publish(string scalar root, string scalar src_in, string scalar sl
     if (descr != "") form = form \ ("description", descr, "0")
     if (kind != "") form = form \ ("kind", kind, "0")
     if (visibility != "") form = form \ ("visibility", visibility, "0")
+    // Display settings go only when given; Cloud keeps the others.
+    if (display != "") form = form \ ("display", fw_display_json(display), "0")
     printf("{txt}Uploading %s to %s\n", fw_basename(src), fw_url_host(url))
     status = fw_http("publish", "POST", url + "/api/v1/documents", "project", root, d, "", form, 600)
     if (status < 200 | status >= 300) {
@@ -592,13 +643,15 @@ string scalar fw_find_fw_quick()
 // Arguments for the Python bridge, as a JSON file.
 void fw_bridge_args(string scalar file, string scalar src, string scalar to, string scalar slug,
     string scalar title, string scalar descr, string scalar kind, string scalar visibility,
-    real scalar include_private)
+    real scalar include_private, | string scalar display)
 {
+    dj = (display != "" ? fw_display_json(display) : "null")
     fw_writefile(file, "{" + fw_json_str("path") + ":" + fw_json_str(fw_abs(src)) + "," +
         fw_json_str("to") + ":" + fw_json_str(to) + "," + fw_json_str("slug") + ":" + fw_json_str(slug) + "," +
         fw_json_str("title") + ":" + fw_json_str(title) + "," + fw_json_str("description") + ":" + fw_json_str(descr) + "," +
         fw_json_str("kind") + ":" + fw_json_str(kind) + "," + fw_json_str("visibility") + ":" + fw_json_str(visibility) + "," +
-        fw_json_str("include_private") + ":" + fw_json_bool(include_private) + "}")
+        fw_json_str("include_private") + ":" + fw_json_bool(include_private) + "," +
+        fw_json_str("display") + ":" + dj + "}")
 }
 
 void fw_bridge_result(string scalar file)
@@ -625,7 +678,7 @@ string scalar fw_default_slug(string scalar src, string scalar slug)
 // Publish through fw. Sets the receipt locals.
 void fw_cli_publish(string scalar fw, string scalar src, string scalar to, string scalar slug,
     string scalar title, string scalar descr, string scalar kind, string scalar visibility,
-    real scalar include_private, string scalar root)
+    real scalar include_private, string scalar root, | string scalar display)
 {
     d = fw_scratch()
     q = (fw_windows() ? fw_dq() : fw_sq())
@@ -638,6 +691,9 @@ void fw_cli_publish(string scalar fw, string scalar src, string scalar to, strin
     if (kind != "") arg = arg, "--kind", kind
     if (visibility != "") arg = arg, "--visibility", visibility
     if (include_private) arg = arg, "--include-private"
+    // fw 0.8.3 and newer take --display key=on|off, once per setting.
+    D = (display != "" ? fw_display_parse(display) : J(0, 2, ""))
+    for (i = 1; i <= rows(D); i++) arg = arg, "--display", D[i, 1] + "=" + (D[i, 2] == "true" ? "on" : "off")
     cmd = (fw_windows() ? fw_dq() + fw + fw_dq() : fw_shq(fw))
     for (i = 1; i <= cols(arg); i++) cmd = cmd + " " + fw__cliarg(arg[i])
     if (!fw_windows()) cmd = "cd " + fw_shq(root) + " && " + cmd
@@ -652,6 +708,7 @@ void fw_cli_publish(string scalar fw, string scalar src, string scalar to, strin
             E = fw_json_parse(msg)
             if (fw_get(E, "error") != "") msg = fw_get(E, "error")
         }
+        if (rows(D) & strpos(msg, "--display")) msg = msg + fw_nl() + "display() needs fw 0.8.3 or newer. Update fw, or publish with the core backend: fw_set backend core."
         fw_error("fw publish failed (exit " + strofreal(rc) + "): " + msg, 677)
     }
     J = fw_json_parse(out)

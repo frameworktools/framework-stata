@@ -43,6 +43,7 @@ adds a variable with no arrows. Names may hold spaces, as in
 {synopt:{opt vis:ibility(string)}}{bf:public}, {bf:unlisted}, or {bf:private}{p_end}
 {synopt:{opt priv:ate}}short for {cmd:visibility(private)}{p_end}
 {synopt:{opt includepriv:ate}}confirm a {cmd:using} file with "private" in its path{p_end}
+{synopt:{opt disp:lay(settings)}}what Framework Cloud embeds show, such as {cmd:display(legend=off)}{p_end}
 {synopt:{opt sav:ing(filename [, replace])}}keep a copy of the DAG{p_end}
 {synopt:{opt nopub:lish}}save the DAG without publishing it; needs {opt saving()}{p_end}
 {synoptline}
@@ -101,6 +102,14 @@ defaults to {bf:dag-}{it:exposure}{bf:-}{it:outcome} from the first exposure and
 outcome, else {bf:dag}. For a {cmd:using} file, it defaults to the file name.
 Publishing again under the same slug adds a version. A new DAG on Framework
 Cloud is unlisted unless {opt visibility()} says otherwise.
+
+{phang}
+{opt display(settings)} sets what embeds of the DAG show, as in
+{helpb fw_publish##display:fw_publish}: {bf:legend}, {bf:analysis},
+{bf:dagitty}, {bf:code}, {bf:title}, {bf:description}, and {bf:author}, each
+{bf:on} or {bf:off}. {cmd:display(legend=off dagitty=off)} drops the role
+legend and the DAGitty code from embeds. The reader page on Framework Cloud
+still shows them.
 
 {phang}
 {opt saving(filename [, replace])} keeps a copy. A name ending in
