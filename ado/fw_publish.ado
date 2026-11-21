@@ -42,6 +42,7 @@ program define fw_publish, rclass
     local fw_isdir 0
     local fw_wild 0
     local fw_unchanged
+    local fw_embed_link
     mata: fw__publish_scratch = fw_scratch()
     mata: st_local("scratch", fw__publish_scratch)
     capture noisily {
@@ -225,8 +226,12 @@ program define fw_publish, rclass
     else display as text `"Published to `fw_dest'`vtext': "' _c
     if regexm(`"`where'"', "^https?://") display as result `"{browse "`where'"}"'
     else display as result `"`where'"'
+    * The link to paste into a blog or site that takes Framework embeds.
+    if regexm(`"`fw_embed_link'"', "^https?://") display as text "Embed: " as result `"{browse "`fw_embed_link'"}"'
+    else local fw_embed_link
     if `"`fw_notice'"' != "" display as text `"`fw_notice'"'
     return local url `"`fw_url'"'
+    return local embed_link `"`fw_embed_link'"'
     return local location `"`fw_location'"'
     return local version `"`fw_version'"'
     return local version_url `"`fw_version_url'"'

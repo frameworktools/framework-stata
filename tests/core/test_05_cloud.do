@@ -422,6 +422,52 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin cloud: the embed link prints after a publish and comes back in r(embed_link)
+capture noisily {
+    t_write `"`root'/embed.txt"' "Embed me"
+    t_log_begin
+    fw_publish "embed.txt", to(cloud) slug(embed-public) visibility(public)
+    local public `"`r(embed_link)'"'
+    fw_dag "x -> y", exposure(x) outcome(y) slug(embed-dag)
+    local dag `"`r(embed_link)'"'
+    t_write `"`root'/embedsnip.do"' ///
+        "fw_snippet begin embed-snippet" ///
+        "display 42" ///
+        "fw_snippet end"
+    do `"`root'/embedsnip.do"'
+    local snip `"`r(embed_link)'"'
+    t_log_end
+    t_eq `"`public'"' "http://127.0.0.1:`port'/go/abcd"
+    t_eq `"`dag'"' "http://127.0.0.1:`port'/d/embed-dag"
+    t_eq `"`snip'"' "http://127.0.0.1:`port'/d/embed-snippet"
+    t_log_has "Embed: http://127.0.0.1:`port'/go/abcd"
+    t_log_has "Embed: http://127.0.0.1:`port'/d/embed-dag"
+}
+t_end `=_rc'
+
+t_begin cloud: a private artifact has no embed link and prints none
+capture noisily {
+    t_log_begin
+    fw_publish "embed.txt", to(cloud) slug(embed-private) private
+    local link `"`r(embed_link)'"'
+    t_log_end
+    t_eq `"`link'"' ""
+    t_log_has "Published to cloud"
+    t_log_lacks "Embed:"
+}
+t_end `=_rc'
+
+t_begin cloud: a folder destination prints no embed link
+capture noisily {
+    t_log_begin
+    fw_publish "embed.txt", to(lab) private
+    local link `"`r(embed_link)'"'
+    t_log_end
+    t_eq `"`link'"' ""
+    t_log_lacks "Embed:"
+}
+t_end `=_rc'
+
 t_begin cloud: fw_dag to a folder destination records kind dag
 capture noisily {
     fw_dag "x -> y", exposure(x) outcome(y) to(lab) private

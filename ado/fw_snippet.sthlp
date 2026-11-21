@@ -171,6 +171,7 @@ When publishing fails, the snippet document stays in a temporary folder, and
 
 {p2colset 8 26 28 2}{...}
 {p2col:{cmd:r(url)}}the published link{p_end}
+{p2col:{cmd:r(embed_link)}}the link to paste into a site that takes Framework embeds{p_end}
 {p2col:{cmd:r(version)}}the version number{p_end}
 {p2col:{cmd:r(unchanged)}}1 when Framework Cloud kept the latest version, else 0{p_end}
 {p2col:{cmd:r(slug)}}the artifact name{p_end}

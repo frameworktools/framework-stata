@@ -107,9 +107,10 @@ Cloud is unlisted unless {opt visibility()} says otherwise.
 {opt display(settings)} sets what embeds of the DAG show, as in
 {helpb fw_publish##display:fw_publish}: {bf:legend}, {bf:analysis},
 {bf:dagitty}, {bf:code}, {bf:title}, {bf:description}, and {bf:author}, each
-{bf:on} or {bf:off}. {cmd:display(legend=off dagitty=off)} drops the role
-legend and the DAGitty code from embeds. The reader page on Framework Cloud
-still shows them.
+{bf:on} or {bf:off}. A DAG embeds as its drawing alone by default: its
+description, analysis, DAGitty code, and code start off.
+{cmd:display(dagitty=on code=on)} adds the DAGitty code and the {cmd:fw_dag}
+command to embeds. The reader page on Framework Cloud always shows them.
 
 {phang}
 {opt saving(filename [, replace])} keeps a copy. A name ending in
@@ -137,6 +138,7 @@ still shows them.
 
 {p2colset 8 26 28 2}{...}
 {p2col:{cmd:r(url)}}the published link{p_end}
+{p2col:{cmd:r(embed_link)}}the link to paste into a site that takes Framework embeds{p_end}
 {p2col:{cmd:r(version)}}the version number{p_end}
 {p2col:{cmd:r(slug)}}the artifact name{p_end}
 {p2col:{cmd:r(dagitty)}}the DAGitty text{p_end}

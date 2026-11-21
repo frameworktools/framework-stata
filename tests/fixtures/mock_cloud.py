@@ -1,7 +1,7 @@
 """A minimal Framework Cloud for Framework for Stata's tests.
 
 Standard library only. Serves the device login flow, /api/v1/me, token
-revocation, document uploads (an unchanged code snippet included), the ledger, and external artifact tracking. Tokens are fake.
+revocation, document uploads (an unchanged code snippet and embed links included), the ledger, and external artifact tracking. Tokens are fake.
 
     python3 mock_cloud.py <port> <log.jsonl>
 """
@@ -96,15 +96,19 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(401, {"message": "Unauthenticated."})
         if self.path == "/api/v1/documents":
             slug = entry.get("form", {}).get("slug", "doc")
+            # The link to paste into another site: a public artifact's short
+            # link, an unlisted one's own link, none for a private one.
+            visibility = entry.get("form", {}).get("visibility", "unlisted")
+            embed = {"public": f"{base}/go/abcd", "private": None}.get(visibility, f"{base}/d/{slug}")
             # Cloud adds no version for a code snippet that has not changed.
             if slug == "unchanged-snippet":
                 return self._send(200, {
                     "id": 43, "slug": slug, "version": 2, "unchanged": True,
-                    "url": f"{base}/d/{slug}", "version_url": f"{base}/d/{slug}/v/2", "notice": None,
+                    "url": f"{base}/d/{slug}", "version_url": f"{base}/d/{slug}/v/2", "notice": None, "embed_link": embed,
                 })
             return self._send(201, {
                 "id": 42, "slug": slug, "version": 3,
-                "url": f"{base}/d/{slug}", "version_url": f"{base}/d/{slug}/v/3", "notice": None,
+                "url": f"{base}/d/{slug}", "version_url": f"{base}/d/{slug}/v/3", "notice": None, "embed_link": embed,
             })
         if self.path == "/api/v1/ledger":
             return self._send(201, {"sequence": 7})

@@ -96,6 +96,15 @@ Issue project tokens from the project's **Computers & tokens** page in Framework
 
 HTML files with a companion `<name>_files` directory upload as a single ZIP bundle.
 
+After a Cloud publish, `fw_publish`, `fw_dag`, and `fw_snippet end` print the embed link, the link to paste into a blog or site that takes Framework embeds:
+
+```text
+Published to cloud (version 1): https://framework.pub/d/abc123
+Embed: https://framework.pub/go/abcd
+```
+
+A public artifact's embed link is its short link, and an unlisted artifact's is its own link. Private and password-protected artifacts have none. `r(embed_link)` holds it. The `fw` backend reports it from fw 0.8.5 on.
+
 New Cloud artifacts default to `unlisted` visibility (accessible to anyone with the link and omitted from public indexes). Subsequent publishes without `visibility()` preserve the artifact's existing visibility. Setting `slug()` assigns the readable identifier without altering visibility.
 
 ## Display settings
@@ -103,7 +112,7 @@ New Cloud artifacts default to `unlisted` visibility (accessible to anyone with 
 `display()` sets what embeds of an artifact show on other sites, such as blog posts. It takes `key=on` or `key=off`, separated by spaces:
 
 ```stata
-fw_dag "age -> smoking -> cancer" "age -> cancer", exposure(smoking) outcome(cancer) display(legend=off dagitty=off)
+fw_dag "age -> smoking -> cancer" "age -> cancer", exposure(smoking) outcome(cancer) display(analysis=on dagitty=on)
 fw_publish, estimates display(details=off)
 ```
 
@@ -119,7 +128,7 @@ fw_publish, estimates display(details=off)
 | `legend`, `analysis`, `dagitty`, `code` | DAGs | No role legend, analysis, DAGitty code, or source code. |
 | `interactive` | Vega-Lite charts | The static image shows instead. |
 
-Every setting is on by default. Framework Cloud keeps an artifact's settings across versions. A publish changes only the keys it names, so `key=on` restores a default, and a publish without `display()` changes nothing. The reader page always shows everything. An unknown key or a value other than `on` or `off` stops with error 198 before anything is published.
+Settings are on by default, except that a DAG embeds as its drawing alone: its `description`, `analysis`, `dagitty`, and `code` start off. Framework Cloud keeps an artifact's settings across versions. A publish changes only the keys it names, and a publish without `display()` changes nothing. The reader page always shows everything. An unknown key or a value other than `on` or `off` stops with error 198 before anything is published.
 
 `fw_publish`, `fw_dag`, and `fw_snippet end` take `display()`. The core backend and framework-py send it to Framework Cloud. The `fw` backend needs fw 0.8.3 or newer. Folder destinations ignore it.
 
@@ -141,6 +150,7 @@ R, Python, and `fw` enforce the same check. Framework never uploads files withou
 | `r(location)` | Output directory path for `folder` destinations |
 | `r(version)` | Published version number |
 | `r(version_url)` | Version-specific URL |
+| `r(embed_link)` | Link to paste into a site that takes Framework embeds, when Cloud gives one |
 | `r(unchanged)` | `1` when Cloud kept the latest version of an unchanged code snippet |
 | `r(destination)` | Destination name |
 | `r(driver)` | `cloud`, `folder`, `github`, or `s3` |

@@ -104,6 +104,13 @@ it, a new artifact is unlisted: anyone with the link can open it, but it is not
 listed. A later publish without {opt visibility()} keeps the current visibility.
 {opt slug()} names the artifact; it does not change the visibility.
 
+{pstd}
+After a Framework Cloud publish, {cmd:fw_publish} prints the embed link on a
+line that starts {bf:Embed:}. Paste it into a blog or site that takes Framework
+embeds. A public artifact's embed link is its short link, and an unlisted
+artifact's is its own link. A private artifact, or one with a password, has
+none. The {bf:fw} backend reports it from fw 0.8.5 on.
+
 
 {marker display}{...}
 {title:Display settings}
@@ -111,10 +118,11 @@ listed. A later publish without {opt visibility()} keeps the current visibility.
 {pstd}
 {opt display()} sets what embeds of the artifact show on other sites, such as
 blog posts. It takes {it:key}{cmd:=on} or {it:key}{cmd:=off}, separated by
-spaces: {cmd:display(analysis=off dagitty=off)}. Every setting is on by
-default. Framework Cloud keeps each artifact's settings across versions, and a
-publish changes only the settings it names, so {it:key}{cmd:=on} restores a
-default. Without {opt display()}, the settings stay as they are. The reader
+spaces: {cmd:display(analysis=on dagitty=on)}. Settings are on by default,
+except that a DAG embeds as its drawing alone: its {bf:description},
+{bf:analysis}, {bf:dagitty}, and {bf:code} start off. Framework Cloud keeps
+each artifact's settings across versions, and a publish changes only the
+settings it names. Without {opt display()}, the settings stay as they are. The reader
 page on Framework Cloud always shows everything. The artifact's Settings tab
 on Framework Cloud changes them too.
 
@@ -206,6 +214,7 @@ intervals.
 {p2col:{cmd:r(location)}}the published folder, for folder destinations{p_end}
 {p2col:{cmd:r(version)}}the version number{p_end}
 {p2col:{cmd:r(version_url)}}the link to this version, when the destination has one{p_end}
+{p2col:{cmd:r(embed_link)}}the link to paste into a site that takes Framework embeds, when Framework Cloud gives one{p_end}
 {p2col:{cmd:r(unchanged)}}1 when Framework Cloud kept the latest version of an unchanged code snippet, else 0{p_end}
 {p2col:{cmd:r(destination)}}the destination name{p_end}
 {p2col:{cmd:r(driver)}}cloud, folder, github, or s3{p_end}
