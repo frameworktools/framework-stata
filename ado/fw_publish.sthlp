@@ -122,6 +122,7 @@ on Framework Cloud changes them too.
 {p2col:{bf:title}}the title above the artifact{p_end}
 {p2col:{bf:description}}the description{p_end}
 {p2col:{bf:author}}the author's name{p_end}
+{p2col:{bf:credit}}the link back to the artifact on Framework Cloud{p_end}
 {p2col:{bf:details}}the details section of a model or test{p_end}
 {p2col:{bf:variable_tips}}a model's tips on its terms{p_end}
 {p2col:{bf:column_summaries}}a table's column summaries{p_end}

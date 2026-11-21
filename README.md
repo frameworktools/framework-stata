@@ -216,7 +216,7 @@ fw_dag "age -> smoking -> cancer" "age -> cancer", exposure(smoking) outcome(can
 fw_dag "age -> smoking -> cancer" "age -> cancer", exposure(smoking) outcome(cancer) display(legend=off analysis=off)
 ```
 
-`display()` on `fw_publish`, `fw_dag`, and `fw_snippet end` sets what Framework Cloud embeds of the artifact show: `key=on` or `key=off` for `title`, `description`, `author`, `details`, `variable_tips`, `column_summaries`, `output`, `links`, `legend`, `analysis`, `dagitty`, `code`, and `interactive`. Only the named keys change, and the settings apply to every version. The reader page on Framework Cloud always shows everything. The `fw` backend needs fw 0.8.3 or newer.
+`display()` on `fw_publish`, `fw_dag`, and `fw_snippet end` sets what Framework Cloud embeds of the artifact show: `key=on` or `key=off` for `title`, `description`, `author`, `credit`, `details`, `variable_tips`, `column_summaries`, `output`, `links`, `legend`, `analysis`, `dagitty`, `code`, and `interactive`. Only the named keys change, and the settings apply to every version. The reader page on Framework Cloud always shows everything. The `fw` backend needs fw 0.8.3 or newer.
 
 ## Framework Cloud
 

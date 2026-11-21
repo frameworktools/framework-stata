@@ -467,7 +467,7 @@ void fw_track_external(string scalar root, string scalar bundle, string scalar m
 // The embed display settings Framework Cloud knows.
 string rowvector fw_display_keys()
 {
-    return(("title", "description", "author", "details", "variable_tips", "column_summaries",
+    return(("title", "description", "author", "credit", "details", "variable_tips", "column_summaries",
         "output", "links", "legend", "analysis", "dagitty", "code", "interactive"))
 }
 

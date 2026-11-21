@@ -110,6 +110,7 @@ fw_publish, estimates display(details=off)
 | Key | Applies to | Off means |
 |---|---|---|
 | `title`, `description`, `author` | all | The embed leaves it out. |
+| `credit` | all | No link back to the artifact on Framework Cloud. |
 | `details` | models and tests | No details section. |
 | `variable_tips` | models | No tips on terms. |
 | `column_summaries` | tables | No column summaries in tips. |
