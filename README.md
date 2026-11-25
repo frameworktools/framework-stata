@@ -15,6 +15,7 @@ Framework gives a research project a standard directory layout, records dataset 
 | `fw_publish` | Publish a figure, table, document, or estimation results |
 | `fw_snippet` | Publish commands and the output they printed |
 | `fw_dag` | Publish a causal DAG |
+| `fw_structure` | Show or publish the project's folder tree |
 | `fw_login` | Connect this computer to Framework Cloud |
 | `fw_logout` | Remove this computer's Cloud token |
 | `fw_set` | Set the backend and the location of `fw` |
@@ -210,13 +211,36 @@ fw_dag "age -> smoking -> cancer" "age -> cancer", exposure(smoking) outcome(can
 
 `fw_dag` publishes a `dag` artifact: DAGitty model text built from the paths, with roles from `exposure()`, `outcome()`, `latent()`, `adjusted()`, and `selected()`. Labels come from `labels()` and from the variable labels of variables in memory with the same names. The command itself goes along as the code that built the graph. `fw_dag using model.dagitty` publishes a DAGitty file. Framework Cloud lays out and draws the graph.
 
+### Project structure
+
+```stata
+fw_structure, notes(scripts "Analysis do-files" README.md "Start here") publish
+```
+
+`fw_structure` prints the project's folder tree and uploads nothing. With `publish`, it publishes a `tree` artifact that a tutorial or course page embeds to explain the project's layout. Ignored paths show the `.gitignore` rule that hides them. The tree holds names only.
+
+Ignored and private paths never publish their names. An ignored folder publishes as a stub with its rule and a file count. Ignored files publish as one group per rule and folder, with a count. A folder named `private` or ending in `_private`, or a settings folder marked private, publishes as a stub with a file count. `.git` is always left out. Symbolic links show as files and are never followed. The local tree lists ignored files by name, at most 20 per folder and rule.
+
+```text
+my-project/
+├── data/
+│   ├── private/   private · 1 file
+│   └── raw/       ignored by data/raw/ (.gitignore:1) · 2 files
+├── outputs/
+│   ├── table.csv
+│   └── *.rds      ignored by *.rds (.gitignore:2) · 2 files
+└── README.md      Start here
+```
+
+Git decides what is ignored when the project is in a git work tree. Without git, `fw_structure` reads the root `.gitignore`. Folders such as `fw_structure scripts outputs` publish as one tree. `depth()` limits the levels listed, `exclude()` leaves paths out with no stub, `ignored(hide)` leaves ignored paths out, and `open()` and `highlight()` mark paths for embeds. The slug defaults to `structure`, or `structure-<folder>` for one subfolder.
+
 ### Display settings
 
 ```stata
 fw_dag "age -> smoking -> cancer" "age -> cancer", exposure(smoking) outcome(cancer) display(analysis=on dagitty=on)
 ```
 
-`display()` on `fw_publish`, `fw_dag`, and `fw_snippet end` sets what Framework Cloud embeds of the artifact show: `key=on` or `key=off` for `title`, `description`, `author`, `credit`, `details`, `variable_tips`, `column_summaries`, `output`, `links`, `legend`, `analysis`, `dagitty`, `code`, and `interactive`. Settings are on by default, except that a DAG embeds as its drawing alone: its `description`, `analysis`, `dagitty`, and `code` start off. Only the named keys change, and the settings apply to every version. The reader page on Framework Cloud always shows everything. The `fw` backend needs fw 0.8.3 or newer.
+`display()` on `fw_publish`, `fw_dag`, `fw_structure`, and `fw_snippet end` sets what Framework Cloud embeds of the artifact show: `key=on` or `key=off` for `title`, `description`, `author`, `credit`, `details`, `variable_tips`, `column_summaries`, `output`, `links`, `legend`, `analysis`, `dagitty`, `code`, `interactive`, `notes`, and `ignored`. Settings are on by default, except that a DAG embeds as its drawing alone: its `description`, `analysis`, `dagitty`, and `code` start off. Only the named keys change, and the settings apply to every version. The reader page on Framework Cloud always shows everything. The `fw` backend needs fw 0.8.3 or newer.
 
 ## Framework Cloud
 

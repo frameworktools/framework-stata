@@ -10,7 +10,7 @@ version 14
 mata:
 mata set matastrict off
 
-string scalar fw_version() return("0.3.11")
+string scalar fw_version() return("0.3.12")
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -86,9 +86,10 @@ string colvector fw_readlines(string scalar path)
         lines = lines \ line
     }
     fclose(fh)
-    // Drop a UTF-8 byte order mark.
-    if (rows(lines) & substr(lines[1], 1, 3) == char((239, 187, 191))) {
-        lines[1] = substr(lines[1], 4, .)
+    // Drop a UTF-8 byte order mark. Mata's & evaluates both sides, so an
+    // empty file needs its own test.
+    if (rows(lines)) {
+        if (substr(lines[1], 1, 3) == char((239, 187, 191))) lines[1] = substr(lines[1], 4, .)
     }
     return(lines)
 }

@@ -23,7 +23,7 @@ categories:
     title: Publishing
     description: File, bundle, estimation, and code snippet artifacts
     position: 4
-    common: [fw_publish, fw_snippet]
+    common: [fw_publish, fw_snippet, fw_structure]
   - id: cloud
     title: Cloud
     description: Framework Cloud authentication
@@ -460,9 +460,9 @@ entries:
       - name: includeprivate
         description: Confirms publishing files or estimation datasets from paths containing `private`.
       - name: kind(string)
-        description: Overrides inferred artifact kind (`image`, `html`, `file`, `code_snippet`, or `dag`).
+        description: Overrides inferred artifact kind (`image`, `html`, `file`, `code_snippet`, `dag`, or `tree`).
       - name: display(settings)
-        description: "What Framework Cloud embeds show, as `key=on` or `key=off` separated by spaces, such as `display(legend=off analysis=off)`. Keys: `title`, `description`, `author`, `details`, `variable_tips`, `column_summaries`, `output`, `links`, `legend`, `analysis`, `dagitty`, `code`, `interactive`. Only named keys change. The `fw` backend needs fw 0.8.3 or newer."
+        description: "What Framework Cloud embeds show, as `key=on` or `key=off` separated by spaces, such as `display(legend=off analysis=off)`. Keys: `title`, `description`, `author`, `details`, `variable_tips`, `column_summaries`, `output`, `links`, `legend`, `analysis`, `dagitty`, `code`, `interactive`, `notes`, `ignored`. Only named keys change. The `fw` backend needs fw 0.8.3 or newer."
       - name: level(#)
         default: c(level)
         description: Confidence level for `estimates` (defaults to `c(level)`, typically 95). Estimation command display flags are not inherited automatically.
@@ -578,6 +578,61 @@ entries:
           fw_snippet end, nopublish saving(summary.json, replace)
         runnable: false
     see_also: [fw_publish, "guide:snippets", "guide:publishing"]
+
+  - id: fw_structure
+    name: fw_structure
+    kind: command
+    category: publishing
+    summary: Show or publish the project's folder tree
+    usage: fw_structure [folder ...] [, options]
+    description: |
+      `fw_structure` prints the project's folder tree and uploads nothing. With `publish`, it publishes a `tree` artifact, `<slug>.json`, through `fw_publish`. A tutorial or course page embeds the tree to explain the project's layout. Ignored paths show the `.gitignore` rule that hides them. The tree holds names only.
+
+      Folders are relative to the project root. Without one, the tree shows the whole project. Several folders publish as one tree under the project's folder name.
+    details: |
+      Ignored and private paths never publish their names. An ignored folder publishes as a stub with its rule and a file count. Ignored files publish as one group per rule and folder, with a count. A folder named `private` or ending in `_private`, in any case, or a settings folder whose key holds `private` and not `public`, publishes as a stub with a file count. `.git` is always left out. Symbolic links show as files and are never followed. A rule from git's global excludes file or `.git/info/exclude` shows its source as `global` or `info/exclude`. Counts stop at 10,000.
+
+      The local tree lists ignored files by name, at most 20 per folder and rule. The published form prints before the upload.
+
+      Git decides what is ignored when the project is in a git work tree. Without git, `fw_structure` reads the project root's `.gitignore`: comments, `!` negation, a trailing `/` for folders, a leading or middle `/` to anchor to the root, `*`, `?`, `**`, and `[...]`. On an Apple silicon Mac, Stata 14 runs under Rosetta, where `/usr/bin/git` fails, so `fw_structure` runs the Command Line Tools git directly.
+    parameters:
+      - name: depth(#)
+        description: Levels to list below each chosen folder. A folder at the last level shows its file count. The default is no limit.
+      - name: exclude(globs)
+        description: "`.gitignore` patterns to leave out with no stub, such as `exclude(renv \"*.log\")`."
+      - name: notes(path "note" ...)
+        description: Notes by path, relative to the folder the tree shows. A folder may end in `/`. Up to 500 characters each. A path not in the published tree is an error.
+      - name: open(paths), highlight(paths)
+        description: Folders that start open in embeds, and paths drawn highlighted. A folder that holds a highlighted path opens too.
+      - name: ignored(rules|hide)
+        description: "`rules`, the default, shows ignored stubs and groups. `hide` leaves ignored paths out. Private stubs stay unless the private folder is also ignored."
+      - name: publish
+        description: Publishes the tree to Framework Cloud.
+      - name: slug(string), title(string), description(string)
+        description: "As in `fw_publish`. `slug()` defaults to `structure`, or `structure-<folder>` for one subfolder. `title()` defaults to `<folder> structure`."
+      - name: to(destination), visibility(string), private
+        description: As in `fw_publish`. New Cloud artifacts default to `unlisted`.
+      - name: display(settings)
+        description: "What embeds show: `title`, `description`, `notes`, and `ignored`. With `ignored=off`, embeds drop ignored stubs and groups."
+      - name: saving(filename [, replace])
+        description: Writes the tree document as it would publish.
+    returns: |
+      - `r(nodes)`: published node count
+      - `r(method)`: `git`, `gitignore`, or `none`
+      - `r(root)`, `r(base)`: the name at the top, and the folder relative to the project root
+      - `r(slug)`, `r(file)`: the artifact name and the `saving()` copy
+      - With `publish`: `r(url)`, `r(embed_link)`, `r(artifact_url)`, `r(version)`, and the other `fw_publish` results
+    examples:
+      - title: Show the project locally
+        code: fw_structure
+        runnable: false
+      - title: Publish with notes
+        code: fw_structure, notes(scripts "Analysis do-files" README.md "Start here") highlight(README.md) publish
+        runnable: false
+      - title: Two folders, two levels deep
+        code: fw_structure scripts outputs, depth(2) publish visibility(public)
+        runnable: false
+    see_also: [fw_publish, fw_dag, "guide:publishing"]
 
   - id: fw_login
     name: fw_login

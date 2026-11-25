@@ -468,7 +468,7 @@ void fw_track_external(string scalar root, string scalar bundle, string scalar m
 string rowvector fw_display_keys()
 {
     return(("title", "description", "author", "credit", "details", "variable_tips", "column_summaries",
-        "output", "links", "legend", "analysis", "dagitty", "code", "interactive"))
+        "output", "links", "legend", "analysis", "dagitty", "code", "interactive", "notes", "ignored"))
 }
 
 // display(legend=off analysis=on) as an n x 2 matrix of keys and "true" or

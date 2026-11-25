@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.3.11  21nov2026}{...}
+{* *! version 0.3.12  25nov2026}{...}
 {title:Title}
 
 {phang}
@@ -20,6 +20,7 @@
 {synopt:{helpb fw_publish}}publish a figure, table, document, or estimation results{p_end}
 {synopt:{helpb fw_snippet}}publish commands and the output they printed{p_end}
 {synopt:{helpb fw_dag}}publish a causal DAG{p_end}
+{synopt:{helpb fw_structure}}show or publish the project's folder tree{p_end}
 {synopt:{helpb fw_login}}connect this computer to Framework Cloud{p_end}
 {synopt:{helpb fw_logout}}remove this computer's Cloud token{p_end}
 {synopt:{helpb fw_set}}set the backend and the location of fw{p_end}

@@ -332,6 +332,42 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin cloud: fw_structure, publish uploads structure.json with kind tree
+capture noisily {
+    t_log_begin
+    fw_structure, publish title("Project layout") notes(settings.yml "Project settings") display(notes=off ignored=on)
+    local slug `"`r(slug)'"'
+    local manage `"`r(artifact_url)'"'
+    local share `"`r(embed_link)'"'
+    local nodes = r(nodes)
+    t_log_end
+    t_eq `"`slug'"' "structure"
+    t_eq `"`share'"' "http://127.0.0.1:`port'/d/structure"
+    t_eq `"`manage'"' "http://127.0.0.1:`port'/artifacts/42"
+    assert `nodes' > 0
+    t_log_has "Uploading structure.json"
+    t_log_has "settings.yml"
+    t_log_has "Published version 3."
+    t_log_has "Share:  http://127.0.0.1:`port'/d/structure"
+    t_log_has "Manage: http://127.0.0.1:`port'/artifacts/42"
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "form.kind") == "tree")
+    mata: assert(fw_get(U, "form.slug") == "structure")
+    mata: assert(fw_get(U, "form.title") == "Project layout")
+    mata: assert(fw_get(U, "form.file.filename") == "structure.json")
+    mata: assert(fw_get(U, "form.display") == `"{"notes":false,"ignored":true}"')
+    * The title defaults to the folder name and structure.
+    fw_structure, publish slug(layout)
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/api/v1/documents") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "form.title") == fw_basename(st_local("root")) + " structure")
+    mata: assert(fw_get(U, "form.file.filename") == "layout.json")
+}
+t_end `=_rc'
+
 t_begin cloud: display settings parse to the JSON Cloud reads
 capture noisily {
     mata: assert(fw_display_json("legend=off") == `"{"legend":false}"')

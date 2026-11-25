@@ -108,6 +108,29 @@ Share is the link to paste into a blog or site that takes Framework embeds: a pu
 
 New Cloud artifacts default to `unlisted` visibility (accessible to anyone with the link and omitted from public indexes). Subsequent publishes without `visibility()` preserve the artifact's existing visibility. Setting `slug()` assigns the readable identifier without altering visibility.
 
+## Project structure
+
+```stata
+fw_structure, notes(scripts "Analysis do-files" README.md "Start here") publish
+```
+
+`fw_structure` prints the project's folder tree and uploads nothing. With `publish`, it publishes a `tree` artifact that a tutorial or course page embeds to explain the project's layout. Ignored paths show the `.gitignore` rule that hides them. The tree holds names only.
+
+Ignored and private paths never publish their names. An ignored folder publishes as a stub with its rule and a file count. Ignored files publish as one group per rule and folder, with a count. A folder named `private` or ending in `_private`, or a settings folder marked private, publishes as a stub with a file count. `.git` is always left out. Symbolic links show as files and are never followed. The local tree lists ignored files by name, at most 20 per folder and rule.
+
+```text
+my-project/
+├── data/
+│   ├── private/   private · 1 file
+│   └── raw/       ignored by data/raw/ (.gitignore:1) · 2 files
+├── outputs/
+│   ├── table.csv
+│   └── *.rds      ignored by *.rds (.gitignore:2) · 2 files
+└── README.md      Start here
+```
+
+Git decides what is ignored when the project is in a git work tree. Without git, `fw_structure` reads the root `.gitignore`. Folders such as `fw_structure scripts outputs` publish as one tree. `depth()` limits the levels listed, `exclude()` leaves paths out with no stub, `ignored(hide)` leaves ignored paths out, and `open()` and `highlight()` mark paths for embeds. The slug defaults to `structure`, or `structure-<folder>` for one subfolder.
+
 ## Display settings
 
 `display()` sets what embeds of an artifact show on other sites, such as blog posts. It takes `key=on` or `key=off`, separated by spaces:
@@ -128,10 +151,12 @@ fw_publish, estimates display(details=off)
 | `links` | code snippets | No notebook and model links. |
 | `legend`, `analysis`, `dagitty`, `code` | DAGs | No role legend, analysis, DAGitty code, or source code. |
 | `interactive` | Vega-Lite charts | The static image shows instead. |
+| `notes` | folder trees | No notes beside paths. |
+| `ignored` | folder trees | No ignored stubs or groups. Private stubs stay. |
 
 Settings are on by default, except that a DAG embeds as its drawing alone: its `description`, `analysis`, `dagitty`, and `code` start off. Framework Cloud keeps an artifact's settings across versions. A publish changes only the keys it names, and a publish without `display()` changes nothing. The reader page always shows everything. An unknown key or a value other than `on` or `off` stops with error 198 before anything is published.
 
-`fw_publish`, `fw_dag`, and `fw_snippet end` take `display()`. The core backend and framework-py send it to Framework Cloud. The `fw` backend needs fw 0.8.3 or newer. Folder destinations ignore it.
+`fw_publish`, `fw_dag`, `fw_structure`, and `fw_snippet end` take `display()`. The core backend and framework-py send it to Framework Cloud. The `fw` backend needs fw 0.8.3 or newer. Folder destinations ignore it.
 
 ## Private paths
 

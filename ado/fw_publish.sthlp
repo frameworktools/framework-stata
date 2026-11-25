@@ -27,7 +27,7 @@
 {synopt:{opt vis:ibility(string)}}{bf:public}, {bf:unlisted}, or {bf:private}{p_end}
 {synopt:{opt priv:ate}}short for {cmd:visibility(private)}{p_end}
 {synopt:{opt includepriv:ate}}confirm files with "private" in their path{p_end}
-{synopt:{opt kind(string)}}override the detected kind, such as {bf:image}, {bf:html}, {bf:code_snippet}, or {bf:dag}{p_end}
+{synopt:{opt kind(string)}}override the detected kind, such as {bf:image}, {bf:html}, {bf:code_snippet}, {bf:dag}, or {bf:tree}{p_end}
 {synopt:{opt disp:lay(settings)}}what Framework Cloud embeds show, such as {cmd:display(legend=off)}{p_end}
 {synoptline}
 
@@ -151,6 +151,8 @@ on Framework Cloud changes them too.
 {p2col:{bf:dagitty}}a DAG's DAGitty code{p_end}
 {p2col:{bf:code}}the code that built a DAG{p_end}
 {p2col:{bf:interactive}}an interactive chart; off shows its static image{p_end}
+{p2col:{bf:notes}}a folder tree's notes{p_end}
+{p2col:{bf:ignored}}a folder tree's ignored stubs and groups; private stubs stay{p_end}
 {p2colreset}{...}
 
 {pstd}
