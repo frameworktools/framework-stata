@@ -606,6 +606,43 @@ void fw_cloud_publish(string scalar root, string scalar src_in, string scalar sl
     st_local("fw_slug", rslug != "" ? rslug : fw_slug(name))
 }
 
+// Flatten an artifact on Framework Cloud: its newest version becomes version
+// 1 and Cloud deletes the older versions and their files. A project token
+// reaches artifacts in its own project; without one, the account token from
+// fw_login reaches the account's artifacts, and project names the project
+// when several share the slug. Sets locals fw_artifact_url, fw_version, and
+// fw_removed.
+void fw_flatten_run(string scalar root, string scalar artifact, string scalar project)
+{
+    url = fw_cloud_url(root)
+    d = fw_scratch()
+    if (!fw_have_curl(d)) {
+        fw_scratch_done(d)
+        fw_error("Flattening needs curl. It ships with macOS, Linux, and Windows 10 or later. Run fw_setup for details.", 601)
+    }
+    kind = (fw_have_project_token(root) ? "project" : "user")
+    target = url + "/api/v1/artifacts/" + fw_url_quote(artifact) + "/flatten"
+    if (project != "") target = target + "?project=" + fw_url_quote(project)
+    status = fw_http("flatten", "POST", target, kind, root, d, "", J(0, 3, ""), 300)
+    if (status < 200 | status >= 300) {
+        msg = fw__response_message(d + "/flatten.json")
+        host = fw_url_host(url)
+        if (status == 404) msg = host + " has no artifact " + artifact + (project != "" ? " in the project " + project : "") + " that this token reaches."
+        else if (status == 409) msg = (msg != "" ? msg : "Several projects have an artifact named " + artifact + ".") + " Name one with project()."
+        else if (status == 422) msg = (msg != "" ? msg : host + " refused to flatten " + artifact + " (HTTP 422).")
+        else msg = fw_http_reason(status, d, "flatten", url)
+        fw_scratch_done(d)
+        fw_error("Flattening failed. " + msg, 677)
+    }
+    J = fw_json_read(d + "/flatten.json")
+    fw_scratch_done(d)
+    st_local("fw_artifact_url", fw_get(J, "artifact_url"))
+    st_local("fw_version", fw_get(J, "version"))
+    st_local("fw_removed", fw_get(J, "removed"))
+    a = fw_get(J, "artifact")
+    st_local("fw_flat_name", a != "" ? a : artifact)
+}
+
 // Whether the project has a project token, without reading it into a macro.
 real scalar fw_have_project_token(string scalar root)
 {

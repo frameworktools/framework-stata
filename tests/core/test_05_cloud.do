@@ -601,6 +601,75 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin cloud: fw_flatten keeps the newest version with the project token
+capture noisily {
+    t_log_begin
+    fw_flatten fig-price, confirm
+    local manage `"`r(artifact_url)'"'
+    local version `"`r(version)'"'
+    local removed = r(removed)
+    fw_flatten single, confirm
+    t_log_end
+    t_eq `"`manage'"' "http://127.0.0.1:`port'/artifacts/42"
+    t_eq `"`version'"' "1"
+    assert `removed' == 4
+    t_log_has "Flattened fig-price to version 1; removed 4 older versions."
+    t_log_has "Flattened single to version 1; removed 1 older version."
+    t_log_has "Manage: http://127.0.0.1:`port'/artifacts/42"
+    t_log_has "deletes every older version and its files for good"
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/flatten") :> 0)
+    mata: U = fw_json_parse(up[rows(up) - 1])
+    mata: assert(fw_get(U, "method") == "POST")
+    mata: assert(fw_get(U, "path") == "/api/v1/artifacts/fig-price/flatten")
+    mata: assert(fw_get(U, "auth") == "project")
+}
+t_end `=_rc'
+
+t_begin cloud: fw_flatten needs confirm in batch mode and explains failures
+capture noisily {
+    t_requests `"`log'"'
+    mata: st_local("before", strofreal(rows(select(R, strpos(R, "/flatten") :> 0))))
+    t_log_begin
+    capture noisily fw_flatten fig-price
+    assert _rc == 198
+    capture noisily fw_flatten a b, confirm
+    assert _rc == 198
+    capture noisily fw_flatten missing, confirm
+    assert _rc == 677
+    capture noisily fw_flatten shared, confirm
+    assert _rc == 677
+    capture noisily fw_flatten external, confirm
+    assert _rc == 677
+    t_log_end
+    t_log_has "Add the confirm option: fw_flatten fig-price, confirm"
+    t_log_has "no artifact missing that this token reaches"
+    t_log_has "Name one with project()."
+    t_log_has "External publications have no versions"
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/flatten") :> 0)
+    * The unconfirmed and two-artifact calls sent nothing.
+    mata: assert(rows(up) == strtoreal(st_local("before")) + 3)
+    fw_flatten shared, project(lab-study) confirm
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/flatten") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "path") == "/api/v1/artifacts/shared/flatten?project=lab-study")
+}
+t_end `=_rc'
+
+t_begin cloud: fw_flatten outside a project uses the account token
+capture noisily {
+    mata: fw_flatten_run("", "fig-price", "lab-study")
+    t_eq `"`fw_removed'"' "4"
+    t_requests `"`log'"'
+    mata: up = select(R, strpos(R, "/flatten") :> 0)
+    mata: U = fw_json_parse(up[rows(up)])
+    mata: assert(fw_get(U, "auth") == "user")
+    mata: assert(fw_get(U, "path") == "/api/v1/artifacts/fig-price/flatten?project=lab-study")
+}
+t_end `=_rc'
+
 t_begin cloud: a missing project token names the fix
 capture noisily {
     t_write `"`root'/.env"' "FW_CLOUD_URL=http://127.0.0.1:`port'"

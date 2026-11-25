@@ -26,6 +26,8 @@ f ado/fw_dag.mata
 f ado/fw_dag.sthlp
 f ado/fw_data.mata
 f ado/fw_estimates.mata
+f ado/fw_flatten.ado
+f ado/fw_flatten.sthlp
 f ado/fw_graph.ado
 f ado/fw_graph.sthlp
 f ado/fw_login.ado
@@ -55,6 +57,7 @@ f ado/fw_snippet.mata
 f ado/fw_snippet.sthlp
 f ado/fw_structure.ado
 f ado/fw_structure.mata
+f ado/fw_structure.sthlp
 f ado/fw_table.ado
 f ado/fw_table.sthlp
 f ado/fw_use.ado

@@ -634,6 +634,39 @@ entries:
         runnable: false
     see_also: [fw_publish, fw_dag, "guide:publishing"]
 
+  - id: fw_flatten
+    name: fw_flatten
+    kind: command
+    category: publishing
+    summary: Keep only an artifact's newest version on Framework Cloud
+    usage: fw_flatten artifact [, project(slug) confirm]
+    description: |
+      `fw_flatten` makes an artifact's newest version its version 1. Framework Cloud deletes every older version and its files for good. Trash keeps no copy. Links and embeds of old versions open the latest one. Collections and reports that pinned an old version show version 1. The next publish continues after the highest old version number.
+
+      Every artifact kind can be flattened. Artifacts published to GitHub Pages, S3, or a folder have no versions on Framework Cloud, and Cloud refuses them.
+    details: |
+      Before it flattens, `fw_flatten` says what Cloud deletes. Interactive sessions ask for `y`. Batch mode stops with error 198 unless `confirm` is given.
+
+      `fw_flatten` uses the same token as `fw_publish`: `FW_PROJECT_TOKEN` or the project's `.env`. Without one, it uses the account token from `fw_login`. A project token reaches only its own project's artifacts.
+    parameters:
+      - name: artifact
+        required: true
+        description: The artifact's slug, as `fw_publish` reports it in `r(slug)`.
+      - name: project(slug)
+        description: The project that holds the artifact. Needed with the account token when several projects have an artifact with the same slug.
+      - name: confirm
+        description: Flattens without asking. Required in batch mode.
+    returns: |
+      - `r(artifact_url)`: the artifact's page on Framework Cloud
+      - `r(artifact)`: the artifact
+      - `r(version)`: the version number now, `1`
+      - `r(removed)`: the number of older versions deleted
+    examples:
+      - title: Flatten an artifact
+        code: fw_flatten price-mileage, confirm
+        runnable: false
+    see_also: [fw_publish, fw_login, "guide:publishing"]
+
   - id: fw_login
     name: fw_login
     kind: command

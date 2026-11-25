@@ -16,6 +16,7 @@ Framework gives a research project a standard directory layout, records dataset 
 | `fw_snippet` | Publish commands and the output they printed |
 | `fw_dag` | Publish a causal DAG |
 | `fw_structure` | Show or publish the project's folder tree |
+| `fw_flatten` | Keep only an artifact's newest version on Framework Cloud |
 | `fw_login` | Connect this computer to Framework Cloud |
 | `fw_logout` | Remove this computer's Cloud token |
 | `fw_set` | Set the backend and the location of `fw` |
@@ -261,6 +262,21 @@ Manage: https://framework.pub/artifacts/123
 Share is the link to paste into a blog or site that takes Framework embeds; private artifacts have none. Manage is the owner's page for the artifact. `r(embed_link)` and `r(artifact_url)` hold them.
 
 `fw_login` authenticates the workstation. Publishing artifacts from a project uses `FW_PROJECT_TOKEN` in the project's `.env` file.
+
+### Version flattening
+
+```stata
+fw_flatten price-mileage, confirm
+```
+
+`fw_flatten` makes an artifact's newest version its version 1. Framework Cloud deletes every older version and its files for good. Trash keeps no copy. Links and embeds of old versions open the latest one, and collections and reports that pinned an old version show version 1. The next publish continues after the highest old version number.
+
+```text
+Flattened price-mileage to version 1; removed 4 older versions.
+Manage: https://framework.pub/artifacts/123
+```
+
+Interactive sessions ask before flattening. Batch mode stops with error 198 unless `confirm` is given. `fw_flatten` uses the project token, as `fw_publish` does, or the account token from `fw_login` outside a project. A project token reaches only its own project's artifacts. With the account token, `project()` names the project when several projects share the slug. Artifacts published to GitHub Pages, S3, or a folder have no versions on Framework Cloud, and Cloud refuses them. `r(artifact_url)`, `r(version)`, and `r(removed)` hold the result.
 
 ## Backends
 

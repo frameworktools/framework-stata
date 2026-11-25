@@ -1,7 +1,7 @@
 """A minimal Framework Cloud for Framework for Stata's tests.
 
 Standard library only. Serves the device login flow, /api/v1/me, token
-revocation, document uploads (an unchanged code snippet, share and manage links, and an old server's reply included), the ledger, and external artifact tracking. Tokens are fake.
+revocation, artifact flattening, document uploads (an unchanged code snippet, share and manage links, and an old server's reply included), the ledger, and external artifact tracking. Tokens are fake.
 
     python3 mock_cloud.py <port> <log.jsonl>
 """
@@ -92,6 +92,18 @@ class Handler(BaseHTTPRequestHandler):
             if polls["count"] < 2:
                 return self._send(428, {"error": "authorization_pending"})
             return self._send(200, {"token": USER_TOKEN, "url": base})
+        if self.path.startswith("/api/v1/artifacts/") and "/flatten" in self.path:
+            if entry["auth"] not in ("project", "user"):
+                return self._send(401, {"message": "Unauthenticated."})
+            slug = self.path.split("/api/v1/artifacts/", 1)[1].split("/flatten", 1)[0]
+            if slug == "missing":
+                return self._send(404, {"message": "Not found."})
+            if slug == "shared" and "project=" not in self.path:
+                return self._send(409, {"message": "Several projects have an artifact with this slug."})
+            if slug == "external":
+                return self._send(422, {"message": "External publications have no versions on Framework Cloud to flatten."})
+            return self._send(200, {"artifact": slug, "version": 1, "removed": 1 if slug == "single" else 4,
+                                    "artifact_url": f"{base}/artifacts/42"})
         if entry["auth"] != "project":
             return self._send(401, {"message": "Unauthenticated."})
         if self.path == "/api/v1/documents":

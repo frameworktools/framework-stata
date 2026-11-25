@@ -21,6 +21,7 @@
 {synopt:{helpb fw_snippet}}publish commands and the output they printed{p_end}
 {synopt:{helpb fw_dag}}publish a causal DAG{p_end}
 {synopt:{helpb fw_structure}}show or publish the project's folder tree{p_end}
+{synopt:{helpb fw_flatten}}keep only an artifact's newest version on Framework Cloud{p_end}
 {synopt:{helpb fw_login}}connect this computer to Framework Cloud{p_end}
 {synopt:{helpb fw_logout}}remove this computer's Cloud token{p_end}
 {synopt:{helpb fw_set}}set the backend and the location of fw{p_end}
