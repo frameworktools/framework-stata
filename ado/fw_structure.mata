@@ -725,7 +725,8 @@ string scalar fw__tr_badge(string rowvector r)
 {
     external transmorphic scalar fw__tr_notes
     b = ""
-    if (r[4] == "1") b = "private · " + fw__tr_files(strtoreal(r[10]))
+    if (r[4] == "1" & r[5] == "1") b = "private · " + fw__tr_why(r[7], r[8], r[9]) + " · " + fw__tr_files(strtoreal(r[10]))
+    else if (r[4] == "1") b = "private · " + fw__tr_files(strtoreal(r[10]))
     else if (r[5] == "1" & r[3] == "dir") b = fw__tr_why(r[7], r[8], r[9]) + " · " + fw__tr_files(strtoreal(r[10]))
     else if (r[5] == "1") b = fw__tr_why(r[7], r[8], r[9])
     else if (r[6] == "1") b = fw__tr_files(strtoreal(r[10]))

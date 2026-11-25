@@ -149,6 +149,21 @@ capture noisily {
 }
 t_end `=_rc'
 
+t_begin structure: a private folder that is also ignored names its rule after private
+capture noisily {
+    t_tree_fixture
+    local root `"`r(root)'"'
+    t_write `"`root'/.gitignore"' "data/raw/" "*.rds" ".env" "data/private/"
+    quietly cd `"`root'"'
+    fw_project, quietly
+    t_log_begin
+    fw_structure
+    t_log_end
+    t_log_has "│   ├── private/   private · ignored by data/private/ (.gitignore:4) · 1 file"
+    t_log_lacks "ids.csv"
+}
+t_end `=_rc'
+
 t_begin structure: more than 20 ignored files under one rule list 20 and a count
 capture noisily {
     t_tree_fixture
